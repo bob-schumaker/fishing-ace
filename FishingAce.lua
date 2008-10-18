@@ -147,7 +147,7 @@ end
 -- Something else that should be in a library
 local function SplitLink(link)
 	if ( link ) then
-		local _,_, color, item, name = string.find(link, "|c(%x+)|Hitem:(%d+:%d+:%d+:%d+:%d+:%d+:%-?%d+:%-?%d+)|h%[(.-)%]|h|r")
+		local _,_, color, item, name = string.find(link, "|c(%x+)|Hitem:(%d+:%d+:%d+:%d+:%d+:%d+:%-?%d+:%-?%d+:%-?%d+)|h%[(.-)%]|h|r")
 		return color, item, name
 	end
 end
