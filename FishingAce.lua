@@ -310,9 +310,9 @@ local function StartFishingMode(self)
 			SetCVar("autointeract", "0")
 		end
 		if ( self.db.profile.autoLoot ) then
-			if ( not GetAutoLootDefault() ) then
+			if ( not GetCVar("autoLootDefault") ) then
 				self.resetAutoLoot = true
-				SetAutoLootDefault(true)
+				SetCVar("autoLootDefault", 1)
 			end
 		end
 		self.startedFishing = GetTime()
@@ -331,7 +331,7 @@ local function StopFishingMode(self)
 		self.resetClickToMove = nil
 	end
 	if ( self.resetAutoLoot ) then
-		SetAutoLootDefault(false)
+		SetCVar("autoLootDefault", 0)
 		self.resetAutoLoot = nil
 	end
 end
