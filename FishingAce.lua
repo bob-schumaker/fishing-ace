@@ -145,11 +145,12 @@ function FishingAce:OnInitialize()
 end
 
 -- Something else that should be in a library
-local function SplitLink(link)
-	if ( link ) then
-		local _,_, color, item, name = string.find(link, "|c(%x+)|Hitem:(%d+:%d+:%d+:%d+:%d+:%d+:%-?%d+:%-?%d+:%-?%d+)|h%[(.-)%]|h|r")
-		return color, item, name
-	end
+local itempattern = "|c(%x+)|Hitem:(%d+)(:%d+:%d+:%d+:%d+:%d+:[-]?%d+:[-]?%d+:[-]?%d+)|h%[(.*)%]|h|r";
+function SplitLink(link)
+   if ( link ) then
+      local _,_, color, id, item, name = string.find(link, itempattern);
+      return color, id..item, name;
+   end
 end
 
 local FISHINGTEXTURE = "Interface\\Icons\\Trade_Fishing"
@@ -385,15 +386,18 @@ local function SetupLure()
 		if ( FishingAce.db.profile.autoLure and not hmhe ) then
 			local itemid, name = GetBestLure()
 			if ( itemid ) then
-				FishingAceButton:SetAttribute("type", "item")
-				FishingAceButton:SetAttribute("item", "item:"..itemid)
-				local slot = GetInventorySlotInfo("MainHandSlot")
-				FishingAceButton:SetAttribute("target-slot", slot)
-				FishingAceButton:SetAttribute("spell", nil)
-				FishingAceButton:SetAttribute("action", nil)
-				AddingLure = true
-				LastLure = name
-				return true
+				local startTime, _, _ = GetItemCooldown(itemid)
+				if ( startTime == 0) then
+					FishingAceButton:SetAttribute("type", "item")
+					FishingAceButton:SetAttribute("item", "item:"..itemid)
+					local slot = GetInventorySlotInfo("MainHandSlot")
+					FishingAceButton:SetAttribute("target-slot", slot)
+					FishingAceButton:SetAttribute("spell", nil)
+					FishingAceButton:SetAttribute("action", nil)
+					AddingLure = true
+					LastLure = name
+					return true
+				end
 			end
 		end
 	end
