@@ -306,12 +306,12 @@ end
 local function StartFishingMode(self)
 	if ( not self.startedFishing ) then
 		-- Disable Click-to-Move if we're fishing
-		if ( GetCVar("autointeract") == "1" ) then
+		if ( GetCVarBool("autointeract") ) then
 			self.resetClickToMove = true
 			SetCVar("autointeract", "0")
 		end
 		if ( self.db.profile.autoLoot ) then
-			if ( not GetCVar("autoLootDefault") ) then
+			if ( not GetCVarBool("autoLootDefault") ) then
 				self.resetAutoLoot = true
 				SetCVar("autoLootDefault", 1)
 			end
