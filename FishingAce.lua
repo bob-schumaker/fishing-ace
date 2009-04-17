@@ -37,6 +37,12 @@ local options = {
 }
 
 local FISHINGLURES = {
+   [46006] = {
+      ["n"] = "Glow Worm",       		 		  -- 100 for 60 minutes
+      ["b"] = 100,
+      ["s"] = 100,
+      ["d"] = 60,
+   },
    [34861] = {
       ["n"] = "Sharpened Fish Hook",       		  -- 100 for 10 minutes
       ["b"] = 100,
