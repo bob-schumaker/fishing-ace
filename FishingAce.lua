@@ -1,6 +1,7 @@
 FishingAce = AceLibrary("AceAddon-2.0"):new("AceConsole-2.0", "AceEvent-2.0", "AceHook-2.1", "AceDB-2.0")
 
 local L = AceLibrary("AceLocale-2.2"):new("FishingAce")
+local FL = LibStub("LibFishing-1.0")
 
 local options = {
 	type='group',
@@ -119,7 +120,7 @@ end
 local function PostCastUpdate(self)
 	local stop = true
 	if ( not InCombatLockdown() ) then
-		ResetFAButton();
+		ResetFAButton()
 		if ( AddingLure ) then
 			local sp, rk, dn, ic, st, et = UnitCastingInfo("player")
 			if ( not sp or (dn and dn ~= LastLure) ) then
@@ -150,114 +151,10 @@ function FishingAce:OnInitialize()
 	btn:SetScript("PostClick", HideAwayAll)
 end
 
--- Something else that should be in a library
-local itempattern = "|c(%x+)|Hitem:(%d+)(:%d+:%d+:%d+:%d+:%d+:[-]?%d+:[-]?%d+:[-]?%d+)|h%[(.*)%]|h|r";
-function SplitLink(link)
-   if ( link ) then
-      local _,_, color, id, item, name = string.find(link, itempattern);
-      return color, id..item, name;
-   end
-end
-
-local FISHINGTEXTURE = "Interface\\Icons\\Trade_Fishing"
-local FishingSpellID, FishingSpellName
-
--- support finding the fishing skill
-local function FindSpellID(thisone)
-	local id = 1
-	local spellTexture = GetSpellTexture(id, BOOKTYPE_SPELL)
-	while (spellTexture) do
-		if (spellTexture and spellTexture == thisone) then
-			return id
-		end
-		id = id + 1
-		spellTexture = GetSpellTexture(id, BOOKTYPE_SPELL)
-	end
---	return nil
-end
-
-local function GetFishingSpellID()
-	if ( not FishingSpellID or not FishingSkillName) then
-		FishingSpellID = FindSpellID(FISHINGTEXTURE)
-	end
-	if ( FishingSpellID and not FishingSkillName ) then
-		FishingSkillName = GetSpellName(FishingSpellID, BOOKTYPE_SPELL)
-	end
-	return FishingSpellID, FishingSkillName
-end
-
-local function GetFishingActionBarID()
-   local FishingActionBarID = nil
-   for slot=1,72 do
-      if ( HasAction(slot) and not IsAttackAction(slot) ) then
-         local t,i,s = GetActionInfo(slot)
-         if ( t == "spell" ) then
-            local tex = GetActionTexture(slot)
-            if ( tex and tex == FISHINGTEXTURE ) then
-               FishingActionBarID = slot
-               break
-            end
-         end
-      end
-   end
-   return FishingActionBarID
-end
-
--- get our current fishing skill level
-local lastSkillIndex = nil
-local function GetCurrentSkill()
-	local _,skillname = GetFishingSpellID()
-	if ( lastSkillIndex ) then
-		local name, _, _, rank, _, modifier = GetSkillLineInfo(lastSkillIndex)
-		if ( name == skillname )then
-			return rank + modifier
-		end
-	end
-	local n = GetNumSkillLines()
-	for i=1,n do
-		local name, _, _, rank, _, modifier = GetSkillLineInfo(i)
-		if ( name == skillname ) then
-			lastSkillIndex = i
-			return rank + modifier
-		end
-	end
-	return 0
-end
-
-local function IsFishingPole()
-	-- Get the main hand item texture
-	local slot = GetInventorySlotInfo("MainHandSlot")
-	local itemTexture = GetInventoryItemTexture("player", slot)
-	-- If there is infact an item in the main hand, and it's texture
-	-- that matches the fishing pole texture, then we have a fishing pole
-	if ( itemTexture and string.find(itemTexture, "INV_Fishingpole") ) then
-		local link = GetInventoryItemLink("player", slot)
-		local _, id, _ = SplitLink(link)
-		-- Make sure it's not "Nat Pagle's Fish Terminator"
-		if ( not string.find(id, "^19944") ) then
-			return true
-		end
-	end
-	return false
-end
-
 local function HijackCheck()
-	if ( not InCombatLockdown() and IsFishingPole() ) then
+	if ( not InCombatLockdown() and FL:IsFishingPole() ) then
 		return true
 	end
-end
-
-local function FindSpellID(thisone)
-	local id = 1
-	local spellTexture = GetSpellTexture(id, BOOKTYPE_SPELL)
-	while (spellTexture) do
-		if (spellTexture and spellTexture == thisone) then
-			return id
-		end
-		id = id + 1
-		spellTexture = GetSpellTexture(id, BOOKTYPE_SPELL)
-	end
-	return nil
 end
 
 local function GetBestLure()
@@ -344,37 +241,22 @@ local function StopFishingMode(self)
 end
 
 local function FishingMode(self)
-	if ( IsFishingPole() ) then
+	if ( FL:IsFishingPole() ) then
 		StartFishingMode(self)
 	else
 		StopFishingMode(self)
 	end
 end
 
-local ACTIONDOUBLEWAIT = 0.4
-local lastClickTime = nil
-local function CheckForDoubleClick()
-	if ( lastClickTime ) then
-		local pressTime = GetTime()
-		local doubleTime = pressTime - lastClickTime
-		lastClickTime = pressTime
-		if ( doubleTime < ACTIONDOUBLEWAIT ) then
-			return true
-		end
-	end
-	lastClickTime = GetTime()
-	return false
-end
-
 local function SetupFishing()
 	if ( FishingAce.db.profile.useAction ) then
-		local id = GetFishingActionBarID()
+		local id = FL:GetFishingActionBarID()
 		if ( id ) then
 			FishingAceButton:SetAttribute("type", "action")
 			FishingAceButton:SetAttribute("action", id)
 		end
 	else
-		local id,name = GetFishingSpellID()
+		local _,name = FL:GetFishingSkillInfo()
 		if ( name ) then
 			FishingAceButton:SetAttribute("type", "spell")
 			FishingAceButton:SetAttribute("spell", name)
@@ -419,7 +301,7 @@ local function WF_OnMouseDown(...)
 	-- Only steal 'right clicks' (self is arg #1!)
 	local button = select(2, ...)
 	if ( button == "RightButton" and HijackCheck() ) then
-		if ( CheckForDoubleClick() ) then
+		if ( FL:CheckForDoubleClick() ) then
 			-- We're stealing the mouse-up event, make sure we exit MouseLook
 			if ( IsMouselooking() ) then
 				MouselookStop()
@@ -434,7 +316,9 @@ local function WF_OnMouseDown(...)
 end
 
 function FishingAce:OnEnable()
-	self:HookScript(WorldFrame, "OnMouseDown", WF_OnMouseDown)
+	if not self:IsHooked(WorldFrame, "OnMouseDown") then
+		self:HookScript(WorldFrame, "OnMouseDown", WF_OnMouseDown)
+	end
 	self:RegisterEvent("PLAYER_ENTERING_WORLD")
 	self:RegisterEvent("PLAYER_LEAVING_WORLD")
 	self:RegisterEvent("ITEM_LOCK_CHANGED")
@@ -444,13 +328,11 @@ function FishingAce:OnEnable()
 end
 
 function FishingAce:OnDisable()
---   self:UnRegister("FishingAce")
---   AceHook:Unhook(WorldFrame, "OnMouseDown")
---   self:UnregisterEvent("PLAYER_ENTERING_WORLD")
---   self:UnregisterEvent("PLAYER_LEAVING_WORLD")
---   self:UnregisterEvent("ITEM_LOCK_CHANGED")
---   self:UnregisterEvent("SPELLS_CHANGED")
-   ResetButton()
+	self:UnregisterAllEvents()
+	if self:IsHooked(WorldFrame, "OnMouseDown") then
+		self:Unhook(WorldFrame, "OnMouseDown")
+	end
+	ResetButton()
 end
 
 function FishingAce:IsEnhanceSounds()
@@ -488,7 +370,7 @@ end
 
 function FishingAce:SPELLS_CHANGED()
 	-- Fishing might have moved, go look again
-	FishingSpellID = nil
+	FL:GetFishingSkillInfo(true)
 end
 
 function FishingAce:ITEM_LOCK_CHANGED()
@@ -496,11 +378,11 @@ function FishingAce:ITEM_LOCK_CHANGED()
 end
 
 function FishingAce:PLAYER_REGEN_DISABLED()
-   ResetFAButton();
+   ResetFAButton()
 end
 
 function FishingAce:PLAYER_REGEN_ENABLED()
-   ResetFAButton();
+   ResetFAButton()
 end
 
 function FishingAce:PLAYER_ENTERING_WORLD()
