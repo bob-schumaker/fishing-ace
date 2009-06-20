@@ -38,12 +38,6 @@ local options = {
 }
 
 local FISHINGLURES = {
-   [46006] = {
-      ["n"] = "Glow Worm",       		 		  -- 100 for 60 minutes
-      ["b"] = 100,
-      ["s"] = 100,
-      ["d"] = 60,
-   },
    [34861] = {
       ["n"] = "Sharpened Fish Hook",       		  -- 100 for 10 minutes
       ["b"] = 100,
@@ -55,6 +49,12 @@ local FISHINGLURES = {
       ["b"] = 100,
       ["s"] = 100,
       ["d"] = 10,
+   },
+   [46006] = {
+      ["n"] = "Glow Worm",       		 		  -- 100 for 60 minutes
+      ["b"] = 100,
+      ["s"] = 100,
+      ["d"] = 60,
    },
    [33820] = {
       ["n"] = "Weather-Beaten Fishing Hat",       -- 75 for 10 minutes
@@ -292,6 +292,7 @@ local function SetupLure()
 	LastLure = nil
 	return false
 end
+FishingAce.SetupLure = SetupLure
 
 -- handle mouse up and mouse down in the WorldFrame so that we can steal
 -- the hardware events to implement 'Easy Cast'
