@@ -14,5 +14,6 @@
 ## SavedVariablesPerCharacter: FishingBuddyDBPC
 
 Embeds.xml
+LibFishing-1.0.lua
 Locales\Locales.xml
 FishingAce.lua
