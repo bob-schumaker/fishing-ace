@@ -38,6 +38,9 @@ externals:
         url: svn://svn.wowace.com/wow/libtourist-3-0/mainline/trunk
         tag: latest
 
+required-dependencies:
+    - ace2
+    
 ignore:
      - .pkgmeta
      - .docmeta
