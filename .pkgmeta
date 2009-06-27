@@ -1,6 +1,9 @@
 package-as: FishingAce
 
 externals:
+    Libs/LibStub:
+        url: svn://svn.wowace.com/wow/libstub/mainline/trunk
+        tag: latest
     Libs/AceAddon-2.0:
         url: svn://svn.wowace.com/wow/ace2/mainline/trunk/AceAddon-2.0
         tag: latest
@@ -24,6 +27,15 @@ externals:
         tag: latest
     Libs/AceOO-2.0:
         url: svn://svn.wowace.com/wow/ace2/mainline/trunk/AceOO-2.0
+        tag: latest
+	Libs/LibCrayon-3.0:
+        url: svn://svn.wowace.com/wow/libcrayon-3-0/mainline/trunk
+        tag: latest
+	Libs/LibBabble-Zone-3.0:
+        url: svn://svn.wowace.com/wow/libbabble-zone-3-0/mainline/trunk
+        tag: latest
+	Libs/LibTourist-3.0:
+        url: svn://svn.wowace.com/wow/libtourist-3-0/mainline/trunk
         tag: latest
 
 ignore:

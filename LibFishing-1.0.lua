@@ -49,6 +49,7 @@ else
 end
 
 local Crayon = LibStub("LibCrayon-3.0");
+local LT = LibStub("LibTourist-3.0");
 
 local function FixupThis(target, tag, what)
    if ( type(what) == "table" ) then
@@ -293,14 +294,18 @@ end
 local ACTIONDOUBLEWAIT = 0.4;
 local MINACTIONDOUBLECLICK = 0.05;
 
+FishLib.watchBobber = true;
+function FishLib:WatchBobber(flag)
+   self.watchBobber = flag;
+end
+
 -- look for double clicks
 function FishLib:CheckForDoubleClick()
    if ( self.lastClickTime ) then
       local pressTime = GetTime();
       local doubleTime = pressTime - self.lastClickTime;
       if ( doubleTime < ACTIONDOUBLEWAIT and doubleTime > MINACTIONDOUBLECLICK ) then
-         if ( not self:OnFishingBobber() ) then
-            self.lastClickTime = nil;
+         if ( not self.watchBobber or not self:OnFishingBobber() ) then
             return true;
          end
       end
@@ -363,6 +368,73 @@ function FishLib:GetCurrentSkill()
       end
    end
    return 0, 0, 0;
+end
+
+function FishLib:GetZoneInfo()
+   local zone = GetRealZoneText();
+   local subzone = GetSubZoneText();
+   if ( not zone or zone == "" ) then
+      zone = UNKNOWN;
+   end
+   if ( not subzone or subzone == "" ) then
+      subzone = zone;
+   end
+   return zone, subzone;
+end
+
+-- return a nicely formatted line about the local zone skill and yours
+function FishLib:GetFishingSkillLine(join, withzone, caughtSoFar)
+   local part1 = "";
+   local part2 = "";
+   local skill, mods, skillmax = self:GetCurrentSkill();
+   local totskill = skill + mods;
+   local zone, subzone = self:GetZoneInfo();
+   local level = LT:GetFishingLevel(zone);
+   if ( withzone ) then
+      part1 = zone.." : "..subzone.. " ";
+   end
+   if ( level ) then
+       if ( level > 0 ) then
+         local perc = totskill/(level+95); -- no get aways
+         if (perc > 1.0) then
+            perc = 1.0;
+         end
+         part1 = part1.."|cff"..Crayon:GetThresholdHexColor(perc*perc)..level.." ("..math.floor(perc*perc*100).."%)|r";
+      else
+         -- need to translate this on our own
+	      part1 = part1..Crayon:Red(NONE_KEY);
+      end
+   else
+      part1 = Crayon:Red(UNKNOWN);
+   end
+   -- have some more details if we've got a pole equipped
+   if ( self:IsFishingPole() ) then
+      part2 = Crayon:Green(skill.."+"..mods).." "..Crayon:Silver("["..totskill.."]");
+   end
+   if ( join ) then
+      if (part1 ~= "" and part2 ~= "" ) then
+         part1 = part1..Crayon:White(" | ")..part2;
+         part2 = "";
+      end
+   end
+   return part1, part2;
+end
+
+function FishLib:GetSkillUpInfo(lastSkillCheck, caughtSoFar)
+   local skill, mods, skillmax = self:GetCurrentSkill();
+   if ( skillmax and skill < skillmax ) then
+      -- guess high instead of low on how many more we need
+      local needed = math.ceil((skill - 75) / 25);
+      if ( needed < 1 ) then
+         needed = 1;
+      end
+      if ( not lastSkillCheck or lastSkillCheck ~= skill ) then
+         caughtSoFar = 0;
+         lastSkillCheck = skill;
+      end
+      return lastSkillCheck, caughtSoFar, needed;
+   end
+   return lastSkillCheck, caughtSoFar, 0;
 end
 
 function FishLib:GetFishingActionBarID(force)

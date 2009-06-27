@@ -8,5 +8,10 @@
 <Script file="Libs\AceLocale-2.2\AceLocale-2.2.lua"/>
 <Script file="Libs\AceConsole-2.0\AceConsole-2.0.lua"/>
 <Script file="Libs\AceAddon-2.0\AceAddon-2.0.lua"/>
+<Script file="Libs\LibStub\LibStub.lua"/>
+<Script file="Libs\LibCrayon-3.0\LibCrayon-3.0.lua"/>
+<Script file="Libs\LibBabble-Zone-3.0\LibBabble-3.0.lua"/>
+<Script file="Libs\LibBabble-Zone-3.0\LibBabble-Zone-3.0.lua"/>
+<Script file="Libs\LibTourist-3.0\LibTourist-3.0.lua"/>
 
 </Ui>
