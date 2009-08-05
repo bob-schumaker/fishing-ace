@@ -147,15 +147,10 @@ function FishLib:SplitFishLink(link)
 end
 
 function FishLib:GetItemInfo(link)
-   local maj,min,dot = FishLib:WOWVersion();
 -- name, link, rarity, itemlevel, minlevel, itemtype
 -- subtype, stackcount, equiploc, texture
    local nm,li,ra,il,ml,it,st,sc,el,tx;
-   if ( maj > 1 ) then
-      nm,li,ra,il,ml,it,st,sc,el,tx = GetItemInfo(link);
-   else
-      nm,li,ra,ml,it,st,sc,el,tx = GetItemInfo(link);
-   end
+   nm,li,ra,il,ml,it,st,sc,el,tx = GetItemInfo(link);
    return nm,li,ra,ml,it,st,sc,el,tx,il;
 end
 
@@ -434,7 +429,7 @@ function FishLib:GetSkillUpInfo(lastSkillCheck, caughtSoFar)
       end
       return lastSkillCheck, caughtSoFar, needed;
    end
-   return lastSkillCheck, caughtSoFar, 0;
+   return lastSkillCheck, caughtSoFar, nil;
 end
 
 function FishLib:GetFishingActionBarID(force)
@@ -466,7 +461,10 @@ MissedFishItems[45195] = "Empty Rum Bottle";
 MissedFishItems[45199] = "Old Boot";
 MissedFishItems[45201] = "Rock";
 MissedFishItems[45197] = "Tree Branch";
-MissedFishItems[45202] = "Water Snail"; 
+MissedFishItems[45202] = "Water Snail";
+MissedFishItems[45188] = "Withered Kelp";
+MissedFishItems[45189] = "Torn Sail";
+MissedFishItems[45191] = "Empty Clam";
 
 function FishLib:IsMissedFish(id)
    if ( MissedFishItems[id] ) then
