@@ -179,7 +179,6 @@ local function EnhanceFishingSounds(self, enhance)
             local mu = tonumber(GetCVar("Sound_MusicVolume"))
             local av = tonumber(GetCVar("Sound_AmbienceVolume"))
             local sv = tonumber(GetCVar("Sound_SFXVolume"))
-            local ws = tonumber(GetCVar("MapWaterSounds"))
 			if ( not efsv ) then
 				-- collect the current value
 				efsv = {}
@@ -187,13 +186,11 @@ local function EnhanceFishingSounds(self, enhance)
                 efsv["Sound_MusicVolume"] = mu
                 efsv["Sound_AmbienceVolume"] = av
                 efsv["Sound_SFXVolume"] = sv
-                efsv["MapWaterSounds"] = wv
 				-- turn 'em off!
                 SetCVar("Sound_MasterVolume", 1.0)
                 SetCVar("Sound_SFXVolume", 1.0)
                 SetCVar("Sound_MusicVolume", 0.0)
                 SetCVar("Sound_AmbienceVolume", 0.0)
-                SetCVar("MapWaterSounds", 0)
 			end
 		else
 			if ( efsv ) then

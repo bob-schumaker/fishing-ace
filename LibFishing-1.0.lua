@@ -146,6 +146,9 @@ function FishLib:SplitFishLink(link)
    end
 end
 
+-- this used to be necessary because the return values of GetItemInfo
+-- changed. Now it's useful because I don't have to figure out all
+-- my old code that depended on the original order
 function FishLib:GetItemInfo(link)
 -- name, link, rarity, itemlevel, minlevel, itemtype
 -- subtype, stackcount, equiploc, texture
@@ -306,7 +309,7 @@ function FishLib:CheckForDoubleClick()
       end
    end
    self.lastClickTime = GetTime();
-   if ( self:OnFishingBobber() ) then
+   if ( self.watchBobber and self:OnFishingBobber() ) then
       GameTooltip:Hide();
    end
    return false;
