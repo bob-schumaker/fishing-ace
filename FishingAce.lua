@@ -320,6 +320,7 @@ function FishingAce:OnEnable()
 	self:RegisterEvent("PLAYER_ENTERING_WORLD")
 	self:RegisterEvent("PLAYER_LEAVING_WORLD")
 	self:RegisterEvent("ITEM_LOCK_CHANGED")
+	self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
 	self:RegisterEvent("SPELLS_CHANGED")
 	self:RegisterEvent("PLAYER_REGEN_ENABLED")
 	self:RegisterEvent("PLAYER_REGEN_DISABLED")
@@ -375,6 +376,10 @@ function FishingAce:ITEM_LOCK_CHANGED()
 	FishingMode(self)
 end
 
+function FishingAce:PLAYER_EQUIPMENT_CHANGED()
+	FishingMode(self)
+end
+
 function FishingAce:PLAYER_REGEN_DISABLED()
    ResetFAButton()
 end
@@ -385,10 +390,12 @@ end
 
 function FishingAce:PLAYER_ENTERING_WORLD()
 	self:RegisterEvent("ITEM_LOCK_CHANGED")
+	self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
 	self:RegisterEvent("SPELLS_CHANGED")
 end
 
 function FishingAce:PLAYER_LEAVING_WORLD()
 	self:UnregisterEvent("ITEM_LOCK_CHANGED")
+	self:UnregisterEvent("PLAYER_EQUIPMENT_CHANGED")
 	self:UnregisterEvent("SPELLS_CHANGED")
 end

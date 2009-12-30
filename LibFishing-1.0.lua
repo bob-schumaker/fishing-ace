@@ -77,10 +77,9 @@ local function FixupThis(target, tag, what)
          end
       end
       return what;
-   else
-      FishingBuddy.Debug("tag "..tag.." type "..type(what));
-      FishingBuddy.Dump(what);
    end
+   -- do nothing
+   return what;
 end
 
 function FishLib:FixupEntry(constants, tag)
@@ -146,15 +145,11 @@ function FishLib:SplitFishLink(link)
    end
 end
 
--- this used to be necessary because the return values of GetItemInfo
--- changed. Now it's useful because I don't have to figure out all
--- my old code that depended on the original order
 function FishLib:GetItemInfo(link)
 -- name, link, rarity, itemlevel, minlevel, itemtype
 -- subtype, stackcount, equiploc, texture
-   local nm,li,ra,il,ml,it,st,sc,el,tx;
-   nm,li,ra,il,ml,it,st,sc,el,tx = GetItemInfo(link);
-   return nm,li,ra,ml,it,st,sc,el,tx,il;
+   local itemName, itemLink, itemRarity, itemLevel, itemMinLevel, itemType, itemSubType, itemStackCount, itemEquipLoc, itemTexture, itemSellPrice = GetItemInfo(link);
+   return itemName, itemLink, itemRarity, itemMinLevel, itemType, itemSubType, itemStackCount, itemEquipLoc, itemTexture, itemLevel, itemSellPrice;
 end
 
 function FishLib:IsLinkableItem(item)
@@ -194,30 +189,51 @@ function FishLib:GetPoleType()
    return fp_itemtype, fp_subtupe;
 end
 
-function FishLib:IsFishingPole()
-   -- Get the main hand item texture
-   if (not mainhand) then
-      mainhand = GetInventorySlotInfo("MainHandSlot");
+function FishLib:IsFishingPool(text)
+   if ( not text ) then
+      text = self:GetTooltipText();
    end
-   local itemLink = GetInventoryItemLink("player", mainhand);
+   if ( text ) then
+      local check = string.lower(text);
+      for _,info in pairs(self.SCHOOLS) do
+         local name = string.lower(info.name);
+         if ( string.find(check, name) ) then
+            return info;
+         end
+      end
+      if ( string.find(check, self.SCHOOL) ) then
+         return { name = text, kind = self.SCHOOL_FISH } ;
+      end
+   end
+   -- return nil;
+end
+
+function FishLib:IsFishingPole(itemLink)
+   if (not itemLink) then
+      -- Get the main hand item texture
+      if (not mainhand) then
+         mainhand = GetInventorySlotInfo("MainHandSlot");
+      end
+      itemLink = GetInventoryItemLink("player", mainhand);
+   end
    if ( itemLink ) then
+      local _,_,_,_,itemtype,subtype,_,_,itemTexture,_ = self:GetItemInfo(itemLink);
       self:GetPoleType();
       if ( not fp_itemtype ) then
           -- If there is infact an item in the main hand, and it's texture
           -- that matches the fishing pole texture, then we have a fishing pole
-          local itemTexture = GetInventoryItemTexture("player", mainhand);
           itemTexture = string.lower(itemTexture);
           if ( string.find(itemTexture, "inv_fishingpole") or
                string.find(itemTexture, "fishing_journeymanfisher") ) then
              local _, id, _ = FishLib:SplitFishLink(itemLink);
              -- Make sure it's not "Nat Pagle's Fish Terminator"
              if ( id ~= 19944) then
-                _,_,_,_,fp_itemtype,fp_subtype,_,_,_,_ = FishLib:GetItemInfo(id);
+                fp_itemtype = itemtype;
+                fp_subtype = subtype;
                 return true;
              end
           end
       else
-         local _,_,_,_,itemtype,subtype,_,_,_,_ = FishLib:GetItemInfo(itemLink);
          return (itemtype == fp_itemtype) and (subtype == fp_subtype);
       end
    end
@@ -278,6 +294,19 @@ function FishLib:GetTooltipText()
    -- return nil;
 end
 
+function FishLib:SaveTooltipText()
+   self.lastTooltipText = self:GetTooltipText();
+   return self.lastTooltipText;
+end
+
+function FishLib:GetLastTooltipText()
+   return self.lastTooltipText;
+end
+
+function FishLib:ClearLastTooltipText()
+   self.lastTooltipText = nil;
+end
+
 function FishLib:OnFishingBobber()
    if ( GameTooltip:IsVisible() and not UIFrameIsFading(GameTooltip) ) then
       local text = self:GetTooltipText();
@@ -309,7 +338,7 @@ function FishLib:CheckForDoubleClick()
       end
    end
    self.lastClickTime = GetTime();
-   if ( self.watchBobber and self:OnFishingBobber() ) then
+   if ( self:OnFishingBobber() ) then
       GameTooltip:Hide();
    end
    return false;
@@ -560,3 +589,121 @@ function FishLib:GetChatWindow(name)
    return DEFAULT_CHAT_FRAME, nil;
 end
 
+-- which way are we facing?
+local facing_model;
+function FishLib:GetFacing()
+   if(GetCVar("rotateMinimap") == "1") then
+	   return -MiniMapCompassRing:GetFacing() + math.pi;
+   end
+   -- we cache it for later
+   if ( not facing_model ) then
+      local kids = {Minimap:GetChildren()};
+      for _,thing in ipairs(kids) do
+         if ( thing:IsObjectType("Model") and not thing:GetName() and thing:GetModel() == "interface\\minimap\\minimaparrow.m2") then
+            facing_model = thing;
+         end
+      end
+   end
+   if ( facing_model ) then
+      return facing_model:GetFacing() + math.pi;
+   end
+   -- return nil;
+end
+
+-- Pool types
+FishLib.SCHOOL_FISH = 0;
+FishLib.SCHOOL_WRECKAGE = 1;
+FishLib.SCHOOL_DEBRIS = 2;
+FishLib.SCHOOL_WATER = 3;
+FishLib.SCHOOL_TASTY = 4;
+FishLib.SCHOOL_OIL = 5;
+FishLib.SCHOOL_CHURNING = 6;
+FishLib.SCHOOL_FLOTSAM = 7;
+
+local FLTrans = {};
+
+function FLTrans:Setup(lang, school, ...)
+   self[lang] = {};
+   -- as long as string.lower breaks all UTF-8 equially, this should still work
+   self[lang].SCHOOL = string.lower(school);
+   local n = select("#", ...);
+   local schools = {};
+   for idx=1,n,2 do
+      local name, kind = select(idx, ...);
+      tinsert(schools, { name = name, kind = kind });
+   end
+   self[lang].SCHOOLS = schools;
+end
+
+FLTrans:Setup("enUS", "school",
+   "Floating Wreckage", FishLib.SCHOOL_WRECKAGE,
+   "Patch of Elemental Water", FishLib.SCHOOL_WATER,
+   "Floating Debris", FishLib.SCHOOL_DEBRIS,
+   "Oil Spill", FishLib.SCHOOL_OIL,
+   "Stonescale Eel Swarm", FishLib.SCHOOL_FISH,
+   "Muddy Churning Water", FishLib.SCHOOL_CHURNING,
+   "Pure Water", FishLib.SCHOOL_WATER,
+   "Steam Pump Flotsam", FishLib.SCHOOL_FLOTSAM,
+   "School of Tastyfish", FishLib.SCHOOL_QUEST);
+
+FLTrans:Setup("koKR", "떼",
+   "표류하는 잔해", FishLib.SCHOOL_WRECKAGE, --  Floating Wreckage
+   "정기가 흐르는 물 웅덩이", FishLib.SCHOOL_WATER, --  Patch of Elemental Water
+   "표류하는 파편", FishLib.SCHOOL_DEBRIS, --  Floating Debris
+   "떠다니는 기름", FishLib.SCHOOL_OIL, --  Oil Spill
+   "거품이는 진흙탕물", FishLib.SCHOOL_CHURNING, --  Muddy Churning Water
+   "깨끗한 물", FishLib.SCHOOL_WATER, --  Pure Water
+   "증기 양수기 표류물", FishLib.SCHOOL_FLOTSAM, --  Steam Pump Flotsam
+   "맛둥어 떼", FishLib.SCHOOL_QUEST); -- School of Tastyfish
+
+FLTrans:Setup("deDE", "schwarm",
+   "Treibende Wrackteile", FishLib.SCHOOL_WRECKAGE, --  Floating Wreckage
+   "Stelle mit Elementarwasser", FishLib.SCHOOL_WATER, --  Patch of Elemental Water
+   "Schwimmende Trümmer", FishLib.SCHOOL_DEBRIS, --  Floating Debris
+   "Ölfleck", FishLib.SCHOOL_OIL,  --  Oil Spill
+   "Schlammiges aufgewühltes Gewässer", FishLib.SCHOOL_CHURNING, --  Muddy Churning Water
+   "Reines Wasser", FishLib.SCHOOL_WATER, --  Pure Water
+   "Treibgut der Dampfpumpe", FishLib.SCHOOL_FLOTSAM, --  Steam Pump Flotsam
+   "Leckerfischschwarm", FishLib.SCHOOL_QUEST); -- School of Tastyfish
+
+FLTrans:Setup("frFR", "banc",
+   "Débris flottants", FishLib.SCHOOL_WRECKAGE, --  Floating Wreckage
+   "Remous d'eau élémentaire", FishLib.SCHOOL_WATER, --  Patch of Elemental Water
+   "Débris flottant", FishLib.SCHOOL_DEBRIS, --  Floating Debris
+   "Nappe de pétrole", FishLib.SCHOOL_OIL, --  Oil Spill
+   "Eaux troubles et agitées", FishLib.SCHOOL_CHURNING, --  Muddy Churning Water
+   "Eau pure", FishLib.SCHOOL_WATER, --  Pure Water
+   "Détritus de la pompe à vapeur", FishLib.SCHOOL_FLOTSAM, --  Steam Pump Flotsam
+   "Banc de courbine", FishLib.SCHOOL_QUEST); -- School of Tastyfish
+
+FLTrans:Setup("esES", "banco",
+   "Restos de un naufragio", FishLib.SCHOOL_WRECKAGE,   --  Floating Wreckage
+   "Restos flotando", FishLib.SCHOOL_DEBRIS,    --  Floating Debris
+   "Vertido de petr\195\179leo", FishLib.SCHOOL_OIL,   --  Oil Spill
+   "Agua pura", FishLib.SCHOOL_WATER, --  Pure Water
+   "Restos flotantes de bomba de vapor", FishLib.SCHOOL_FLOTSAM, --  Steam Pump Flotsam
+   "Banco de pezricos", FishLib.SCHOOL_QUEST); -- School of Tastyfish
+
+FLTrans:Setup("zhCN", "鱼群",
+   "漂浮的残骸", FishLib.SCHOOL_WRECKAGE, --  Floating Wreckage
+   "元素之水", FishLib.SCHOOL_WATER, --  Patch of Elemental Water
+   "漂浮的碎片", FishLib.SCHOOL_DEBRIS, --  Floating Debris
+   "油井", FishLib.SCHOOL_OIL, --  Oil Spill
+   "石鳞鳗群", FishLib.SCHOOL_FISH, --  Stonescale Eel Swarm
+   "混浊的水", FishLib.SCHOOL_CHURNING, --  Muddy Churning Water
+   "纯水", FishLib.SCHOOL_WATER,             --  Pure Water
+   "蒸汽泵废料", FishLib.SCHOOL_FLOTSAM, --  Steam Pump Flotsam
+   "可口鱼", FishLib.SCHOOL_QUEST); -- School of Tastyfish
+
+FLTrans:Setup("zhTW", "群",
+   "漂浮的殘骸", FishLib.SCHOOL_WRECKAGE, --  Floating Wreckage
+   "元素之水", FishLib.SCHOOL_WATER, --  Patch of Elemental Water
+   "漂浮的碎片", FishLib.SCHOOL_DEBRIS, --  Floating Debris
+   "油井", FishLib.SCHOOL_OIL, --  Oil Spill
+   "混濁的水", FishLib.SCHOOL_CHURNING, --  Muddy Churning Water
+   "純水", FishLib.SCHOOL_WATER,             --  Pure Water
+   "蒸汽幫浦漂浮殘骸", FishLib.SCHOOL_FLOTSAM,  --  Steam Pump Flotsam
+   "斑點可口魚魚群", FishLib.SCHOOL_QUEST); -- School of Tastyfish
+
+FishLib:Translate("LibFishing", FLTrans, FishLib);
+FLTrans = nil;
