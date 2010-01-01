@@ -17,4 +17,6 @@ L:RegisterTranslations("deDE", function() return {
 
 	["LureSkill"] = "Benutzen: Bei Anwendung auf Eure Angelrute wird die F\195\164higkeit 'Angeln' %d Minuten lang um (%d) Punkte erh\195\182ht.",
 	
+	["FishingAce is active, easy cast disabled"] = "FishingAce is active, easy cast disabled",
+	["FishingAce on standby, easy cast enabled"] = "FishingAce on standby, easy cast enabled",
 } end)

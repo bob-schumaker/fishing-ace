@@ -324,6 +324,10 @@ function FishingAce:OnEnable()
 	self:RegisterEvent("SPELLS_CHANGED")
 	self:RegisterEvent("PLAYER_REGEN_ENABLED")
 	self:RegisterEvent("PLAYER_REGEN_DISABLED")
+	
+	if ( FishingBuddy and FishingBuddy.Message ) then
+         FishingBuddy.Message(L["FishingAce is active, easy cast disabled"]);
+	end
 end
 
 function FishingAce:OnDisable()
@@ -332,6 +336,9 @@ function FishingAce:OnDisable()
 		self:Unhook(WorldFrame, "OnMouseDown")
 	end
 	ResetFAButton()
+	if ( FishingBuddy and FishingBuddy.Message ) then
+         FishingBuddy.Message(L["FishingAce on standby, easy cast enabled"]);
+	end
 end
 
 function FishingAce:IsEnhanceSounds()

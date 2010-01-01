@@ -17,4 +17,6 @@ L:RegisterTranslations("enUS", function() return {
 
 	["LureSkill"] = "Use: When applied to your fishing pole, increases Fishing by (%d) for %d minutes.",
 	
+	["FishingAce is active, easy cast disabled"] = true,
+	["FishingAce on standby, easy cast enabled"] = true,
 } end)

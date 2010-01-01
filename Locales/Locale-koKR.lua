@@ -17,5 +17,7 @@ L:RegisterTranslations("koKR", function() return {
 
 	["LureSkill"] = "사용 효과: 낚싯대에 사용하면 %d분 동안 낚시 숙련도가 (%d)만큼 증가합니다.",
 	
+	["FishingAce is active, easy cast disabled"] = "FishingAce is active, easy cast disabled",
+	["FishingAce on standby, easy cast enabled"] = "FishingAce on standby, easy cast enabled",
 } end)
 

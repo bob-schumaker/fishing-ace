@@ -21,4 +21,6 @@ L:RegisterTranslations("zhCN", function() return {
 
 	["LureSkill"] = "使用：应用于钓竿时，提升钓鱼技能(%d)点，持续%d分钟。",
 	
+	["FishingAce is active, easy cast disabled"] = "FishingAce is active, easy cast disabled",
+	["FishingAce on standby, easy cast enabled"] = "FishingAce on standby, easy cast enabled",
 } end)
