@@ -130,6 +130,18 @@ function FishLib:Translate(addon, source, target, record)
    FixupBindings(source, target);
 end
 
+function FishLib:tonil(val, tostr)
+   if ( not val ) then
+      return "nil";
+   else
+      if ( tostr ) then
+         return ""..val;
+      else
+         return val;
+      end
+   end
+end
+
 local itempattern = "|c(%x+)|Hitem:(%d+)(:%d+):%d+:%d+:%d+:%d+:[-]?%d+:[-]?%d+:[-]?%d+|h%[(.*)%]|h|r";
 function FishLib:SplitLink(link)
    if ( link ) then
@@ -591,27 +603,6 @@ function FishLib:GetChatWindow(name)
    return DEFAULT_CHAT_FRAME, nil;
 end
 
--- which way are we facing?
-local facing_model;
-function FishLib:GetFacing()
-   if(GetCVar("rotateMinimap") == "1") then
-	   return -MiniMapCompassRing:GetFacing() + math.pi;
-   end
-   -- we cache it for later
-   if ( not facing_model ) then
-      local kids = {Minimap:GetChildren()};
-      for _,thing in ipairs(kids) do
-         if ( thing:IsObjectType("Model") and not thing:GetName() and thing:GetModel() == "interface\\minimap\\minimaparrow.m2") then
-            facing_model = thing;
-         end
-      end
-   end
-   if ( facing_model ) then
-      return facing_model:GetFacing() + math.pi;
-   end
-   -- return nil;
-end
-
 -- Pool types
 FishLib.SCHOOL_FISH = 0;
 FishLib.SCHOOL_WRECKAGE = 1;
@@ -646,7 +637,7 @@ FLTrans:Setup("enUS", "school",
    "Muddy Churning Water", FishLib.SCHOOL_CHURNING,
    "Pure Water", FishLib.SCHOOL_WATER,
    "Steam Pump Flotsam", FishLib.SCHOOL_FLOTSAM,
-   "School of Tastyfish", FishLib.SCHOOL_QUEST);
+   "School of Tastyfish", FishLib.SCHOOL_TASTY);
 
 FLTrans:Setup("koKR", "떼",
    "표류하는 잔해", FishLib.SCHOOL_WRECKAGE, --  Floating Wreckage
@@ -656,7 +647,7 @@ FLTrans:Setup("koKR", "떼",
    "거품이는 진흙탕물", FishLib.SCHOOL_CHURNING, --  Muddy Churning Water
    "깨끗한 물", FishLib.SCHOOL_WATER, --  Pure Water
    "증기 양수기 표류물", FishLib.SCHOOL_FLOTSAM, --  Steam Pump Flotsam
-   "맛둥어 떼", FishLib.SCHOOL_QUEST); -- School of Tastyfish
+   "맛둥어 떼", FishLib.SCHOOL_TASTY); -- School of Tastyfish
 
 FLTrans:Setup("deDE", "schwarm",
    "Treibende Wrackteile", FishLib.SCHOOL_WRECKAGE, --  Floating Wreckage
@@ -666,7 +657,7 @@ FLTrans:Setup("deDE", "schwarm",
    "Schlammiges aufgewühltes Gewässer", FishLib.SCHOOL_CHURNING, --  Muddy Churning Water
    "Reines Wasser", FishLib.SCHOOL_WATER, --  Pure Water
    "Treibgut der Dampfpumpe", FishLib.SCHOOL_FLOTSAM, --  Steam Pump Flotsam
-   "Leckerfischschwarm", FishLib.SCHOOL_QUEST); -- School of Tastyfish
+   "Leckerfischschwarm", FishLib.SCHOOL_TASTY); -- School of Tastyfish
 
 FLTrans:Setup("frFR", "banc",
    "Débris flottants", FishLib.SCHOOL_WRECKAGE, --  Floating Wreckage
@@ -676,7 +667,7 @@ FLTrans:Setup("frFR", "banc",
    "Eaux troubles et agitées", FishLib.SCHOOL_CHURNING, --  Muddy Churning Water
    "Eau pure", FishLib.SCHOOL_WATER, --  Pure Water
    "Détritus de la pompe à vapeur", FishLib.SCHOOL_FLOTSAM, --  Steam Pump Flotsam
-   "Banc de courbine", FishLib.SCHOOL_QUEST); -- School of Tastyfish
+   "Banc de courbine", FishLib.SCHOOL_TASTY); -- School of Tastyfish
 
 FLTrans:Setup("esES", "banco",
    "Restos de un naufragio", FishLib.SCHOOL_WRECKAGE,   --  Floating Wreckage
@@ -684,7 +675,7 @@ FLTrans:Setup("esES", "banco",
    "Vertido de petr\195\179leo", FishLib.SCHOOL_OIL,   --  Oil Spill
    "Agua pura", FishLib.SCHOOL_WATER, --  Pure Water
    "Restos flotantes de bomba de vapor", FishLib.SCHOOL_FLOTSAM, --  Steam Pump Flotsam
-   "Banco de pezricos", FishLib.SCHOOL_QUEST); -- School of Tastyfish
+   "Banco de pezricos", FishLib.SCHOOL_TASTY); -- School of Tastyfish
 
 FLTrans:Setup("zhCN", "鱼群",
    "漂浮的残骸", FishLib.SCHOOL_WRECKAGE, --  Floating Wreckage
@@ -695,7 +686,7 @@ FLTrans:Setup("zhCN", "鱼群",
    "混浊的水", FishLib.SCHOOL_CHURNING, --  Muddy Churning Water
    "纯水", FishLib.SCHOOL_WATER,             --  Pure Water
    "蒸汽泵废料", FishLib.SCHOOL_FLOTSAM, --  Steam Pump Flotsam
-   "可口鱼", FishLib.SCHOOL_QUEST); -- School of Tastyfish
+   "可口鱼", FishLib.SCHOOL_TASTY); -- School of Tastyfish
 
 FLTrans:Setup("zhTW", "群",
    "漂浮的殘骸", FishLib.SCHOOL_WRECKAGE, --  Floating Wreckage
@@ -705,7 +696,7 @@ FLTrans:Setup("zhTW", "群",
    "混濁的水", FishLib.SCHOOL_CHURNING, --  Muddy Churning Water
    "純水", FishLib.SCHOOL_WATER,             --  Pure Water
    "蒸汽幫浦漂浮殘骸", FishLib.SCHOOL_FLOTSAM,  --  Steam Pump Flotsam
-   "斑點可口魚魚群", FishLib.SCHOOL_QUEST); -- School of Tastyfish
+   "斑點可口魚魚群", FishLib.SCHOOL_TASTY); -- School of Tastyfish
 
 FishLib:Translate("LibFishing", FLTrans, FishLib);
 FLTrans = nil;
