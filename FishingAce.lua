@@ -331,7 +331,7 @@ function FishingAce:OnDisable()
 	if self:IsHooked(WorldFrame, "OnMouseDown") then
 		self:Unhook(WorldFrame, "OnMouseDown")
 	end
-	ResetButton()
+	ResetFAButton()
 end
 
 function FishingAce:IsEnhanceSounds()

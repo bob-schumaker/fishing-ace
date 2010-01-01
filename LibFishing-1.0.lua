@@ -154,7 +154,7 @@ end
 
 function FishLib:IsLinkableItem(item)
    local link = "item:"..item;
-   local n,l,_,_,_,_,_,_ = FishLib:GetItemInfo(link);
+   local n,l,_,_,_,_,_,_ = self:GetItemInfo(link);
    return ( n and l );
 end
 
@@ -179,11 +179,13 @@ local mainhand = nil;
 
 function FishLib:GetPoleType()
    if ( not fp_itemtype ) then
-      _,_,_,_,fp_itemtype,fp_subtype,_,_,_,_ = FishLib:GetItemInfo(6256);
+      _,_,_,_,fp_itemtype,fp_subtype,_,_,_,_ = self:GetItemInfo(6256);
       if ( not fp_itemtype ) then
          -- make sure it's in our cache
          GameTooltip:SetHyperlink("item:6256");
-         _,_,_,_,fp_itemtype,fp_subtype,_,_,_,_ = FishLib:GetItemInfo(6256);
+         GameTooltip:Show();
+         GameTooltip:Hide();
+         _,_,_,_,fp_itemtype,fp_subtype,_,_,_,_ = self:GetItemInfo(6256);
       end
    end
    return fp_itemtype, fp_subtupe;
@@ -219,13 +221,13 @@ function FishLib:IsFishingPole(itemLink)
    if ( itemLink ) then
       local _,_,_,_,itemtype,subtype,_,_,itemTexture,_ = self:GetItemInfo(itemLink);
       self:GetPoleType();
-      if ( not fp_itemtype ) then
+      if ( not fp_itemtype and itemTexture ) then
           -- If there is infact an item in the main hand, and it's texture
           -- that matches the fishing pole texture, then we have a fishing pole
           itemTexture = string.lower(itemTexture);
           if ( string.find(itemTexture, "inv_fishingpole") or
                string.find(itemTexture, "fishing_journeymanfisher") ) then
-             local _, id, _ = FishLib:SplitFishLink(itemLink);
+             local _, id, _ = self:SplitFishLink(itemLink);
              -- Make sure it's not "Nat Pagle's Fish Terminator"
              if ( id ~= 19944) then
                 fp_itemtype = itemtype;
@@ -379,7 +381,7 @@ end
 -- get our current fishing skill level
 local lastSkillIndex = nil;
 function FishLib:GetCurrentSkill()
-   local _,fsn = FishLib:GetFishingSkillInfo();
+   local _,fsn = self:GetFishingSkillInfo();
    if ( self.lastSkillIndex ) then
       local name, _, _, rank, _, modifier, skillmax = GetSkillLineInfo(self.lastSkillIndex);
       if ( name == fsn )then
