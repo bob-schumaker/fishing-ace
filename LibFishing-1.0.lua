@@ -379,21 +379,6 @@ function FishLib:ExtendDoubleClick()
    end
 end
 
--- support finding the fishing skill
-function FishLib:FindSpellID(thisone)
-   local id = 1;
-   local spellTexture = GetSpellTexture(id, BOOKTYPE_SPELL);
-   while (spellTexture) do
-      if (spellTexture and spellTexture == thisone) then
-                return id;
-      end
-      id = id + 1;
-      spellTexture = GetSpellTexture(id, BOOKTYPE_SPELL);
-   end
-   return nil;
-end
-
-
 local skillname = {};
 skillname["enUS"] = "Fishing";
 skillname["esES"] = "Pesca";
@@ -406,18 +391,11 @@ skillname["zhCN"] = "釣魚";
 
 local FISHINGTEXTURE = "Interface\\Icons\\Trade_Fishing";
 function FishLib:GetFishingSkillInfo(force)
-   if ( force or not self.SpellID or not self.SkillName) then
-      self.SpellID = self:FindSpellID(FISHINGTEXTURE);
-      self.SkillName = nil;
+   if ( force or not self.SpellID ) then
+      -- don't know how to find this yet, but I don't use it, so...
+      self.SpellID = nil;
    end
-   if ( self.SpellID and not SkillName ) then
-      self.SkillName = GetSpellBookItemName(self.SpellID, BOOKTYPE_SPELL);
-   end
-   local sname = self.SkillName;
-   if ( not sname ) then
-      sname = skillname[GetLocale()] or skillname["enUS"];
-   end
-   return self.SpellID, sname;
+   return self.SpellID, PROFESSIONS_FISHING;
 end
 
 -- get our current fishing skill level
