@@ -5,7 +5,7 @@ Description: A library with common routines used by FishingBuddy and addons.
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 2
+local MINOR_VERSION = 3
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -35,11 +35,13 @@ end
 
 local bobber = {};
 bobber["enUS"] = "Fishing Bobber";
-bobber["zhTW"] = "釣魚浮標";
-bobber["zhCN"] = "垂钓水花";
 bobber["esES"] = "Anzuelo";
 bobber["esMX"] = "Anzuelo";
 bobber["deDE"] = "Blinker";
+bobber["frFR"] = "Fishing Bobber"; -- ned a translation for this...
+bobber["ruRU"] = "Поплавок";
+bobber["zhTW"] = "釣魚浮標";
+bobber["zhCN"] = "垂钓水花";
 
 local locale = GetLocale();
 if ( bobber[locale] ) then
@@ -142,17 +144,31 @@ function FishLib:tonil(val, tostr)
    end
 end
 
-local itempattern = "|c(%x+)|Hitem:(%d+)(:%d+):%d+:%d+:%d+:%d+:[-]?%d+:[-]?%d+:[-]?%d+|h%[(.*)%]|h|r";
+-- this changes all the damn time
+-- "|c(%x+)|Hitem:(%d+)(:%d+):%d+:%d+:%d+:%d+:[-]?%d+:[-]?%d+:[-]?%d+:[-]?%d+|h%[(.*)%]|h|r"
+
+local _itempattern = nil;
+function FishLib:GetItemPattern()
+   if ( not _itempattern ) then
+      self:GetPoleType(); -- force the default pole into the cache
+      local _, pat, _, _, _, _, _, _ = GetItemInfo(6256);
+      pat = string.gsub(pat, "|c(%x+)|Hitem:(%d+)(:%d+)", "|c(%%x+)|Hitem:(%%d+)(:%%d+)");
+      pat = string.gsub(pat, ":[-]?%d+", ":[-]?%%d+");
+      _itempattern = string.gsub(pat, "|h%[(.*)%]|h|r", "|h%%[(.*)%%]|h|r");
+   end
+   return _itempattern;
+end
+
 function FishLib:SplitLink(link)
    if ( link ) then
-      local _,_, color, id, item, name = string.find(link, itempattern);
+      local _,_, color, id, item, name = string.find(link, self:GetItemPattern());
       return color, id..item, name;
    end
 end
 
 function FishLib:SplitFishLink(link)
    if ( link ) then
-      local _,_, color, id, item, name = string.find(link, itempattern);
+      local _,_, color, id, item, name = string.find(link, self:GetItemPattern());
       return color, tonumber(id), name;
    end
 end
@@ -269,13 +285,12 @@ end
 
 -- fish tracking skill
 function FishLib:GetTrackingID(tex)
-   if ( not tex ) then
-      tex = GetTrackingTexture();
-   end
-   for id=1,GetNumTrackingTypes() do
-      local _, texture, _, _ = GetTrackingInfo(id);
-      if ( texture == tex) then
-         return id;
+   if ( tex ) then
+      for id=1,GetNumTrackingTypes() do
+         local _, texture, _, _ = GetTrackingInfo(id);
+         if ( texture == tex) then
+            return id;
+         end
       end
    end
    -- return nil;
@@ -378,6 +393,17 @@ function FishLib:FindSpellID(thisone)
    return nil;
 end
 
+
+local skillname = {};
+skillname["enUS"] = "Fishing";
+skillname["esES"] = "Pesca";
+skillname["esMX"] = "Pesca";
+skillname["deDE"] = "Angeln";
+skillname["frFR"] = "P\195\170che";
+skillname["ruRU"] = "Рыбная ловля";
+skillname["zhTW"] = "釣魚";
+skillname["zhCN"] = "釣魚";
+
 local FISHINGTEXTURE = "Interface\\Icons\\Trade_Fishing";
 function FishLib:GetFishingSkillInfo(force)
    if ( force or not self.SpellID or not self.SkillName) then
@@ -387,7 +413,11 @@ function FishLib:GetFishingSkillInfo(force)
    if ( self.SpellID and not SkillName ) then
       self.SkillName = GetSpellName(self.SpellID, BOOKTYPE_SPELL);
    end
-   return self.SpellID, self.SkillName;
+   local sname = self.SkillName;
+   if ( not sname ) then
+      sname = skillname[GetLocale()] or skillname["enUS"];
+   end
+   return self.SpellID, sname;
 end
 
 -- get our current fishing skill level
@@ -400,13 +430,10 @@ function FishLib:GetCurrentSkill()
          return rank, modifier, skillmax;
       end
    end
-   local n = GetNumSkillLines();
-   for i=1,n do
-      local name, _, _, rank, _, modifier, skillmax = GetSkillLineInfo(i);
-      if ( name == fsn ) then
-         self.lastSkillIndex = i;
-         return rank, modifier, skillmax;
-      end
+   local _, _, _, fishing, _, _ = GetProfessions();
+   if (fishing) then
+      local name, _, rank, maxrank, _, _, _ = GetProfessionInfo(fishing);
+      return rank, 0, skillmax;
    end
    return 0, 0, 0;
 end
@@ -493,7 +520,7 @@ function FishLib:GetFishingActionBarID(force)
          end
       end
    end
-   return self.ActionBarId;
+   return self.ActionBarID;
 end
 
 -- handle classes of fish
