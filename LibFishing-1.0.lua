@@ -411,7 +411,7 @@ function FishLib:GetFishingSkillInfo(force)
       self.SkillName = nil;
    end
    if ( self.SpellID and not SkillName ) then
-      self.SkillName = GetSpellName(self.SpellID, BOOKTYPE_SPELL);
+      self.SkillName = GetSpellBookItemName(self.SpellID, BOOKTYPE_SPELL);
    end
    local sname = self.SkillName;
    if ( not sname ) then
