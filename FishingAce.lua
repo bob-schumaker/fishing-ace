@@ -1,41 +1,16 @@
-FishingAce = AceLibrary("AceAddon-2.0"):new("AceConsole-2.0", "AceEvent-2.0", "AceHook-2.1", "AceDB-2.0")
+--[[
+Fishing Ace!
+Copyright (c) by Bob Schumaker
+Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" License
+]]--
 
-local L = AceLibrary("AceLocale-2.2"):new("FishingAce")
+local L = LibStub("AceLocale-3.0"):GetLocale("FishingAce", true)
 local FL = LibStub("LibFishing-1.0")
 
-local options = {
-	type='group',
-	args = {
-		auto = {
-			type = 'toggle',
-			name = L["Auto Loot"],
-			desc = L["AutoLootMsg"],
-			get = "IsAutoLoot",
-			set = "ToggleAutoLoot",
-		},
-		lure = {
-			type = 'toggle',
-			name = L["Auto Lures"],
-			desc = L["AutoLureMsg"],
-			get = "IsAutoLure",
-			set = "ToggleAutoLure",
-		},
-		sound = {
-			type = 'toggle',
-			name = L["Enhance Sounds"],
-			desc = L["EnhanceSoundsMsg"],
-			get = "IsEnhanceSounds",
-			set = "ToggleEnhanceSounds",
-		},
-		action = {
-			type = 'toggle',
-			name = L["Use Action"],
-			desc = L["UseActionMsg"],
-			get = "IsUseAction",
-			set = "ToggleUseAction",
-		},
-	},
-}
+local ADDONNAME = "Fishing Ace!"
+
+local db;
+local FISHINGTEXTURE = "Interface\\Icons\\Trade_Fishing"
 
 local FISHINGLURES = {
    [34861] = {
@@ -97,15 +72,6 @@ local FISHINGLURES = {
 
 local AddingLure = false
 
-FishingAce:RegisterDB("FishingBuddyDBPC")
-FishingAce:RegisterDefaults("profile", {
-	autoLoot = true,
-	autoLure = false,
-	enhanceSounds = true,
-	useAction = false,
-} )
-FishingAce:RegisterChatCommand(L["Slash-Commands"], options)
-
 local overrideOn = false
 FishingAceButton = nil
 
@@ -117,7 +83,75 @@ local function ResetFAButton()
 	end
 end
 
-local function PostCastUpdate(self)
+function FAOptions(uiType, uiName)
+	local options = {
+		type='group',
+		icon = FISHINGTEXTURE,
+		name = L["Fishing Ace!"],
+		get = function(key) return db[key.arg] end,
+		set = function(key, val) db[key.arg] = val end,
+		args = {
+			loot = {
+				type = 'toggle',
+				name = L["Auto Loot"],
+				desc = L["AutoLootMsg"],
+				arg = "loot",
+			},
+			lure = {
+				type = 'toggle',
+				name = L["Auto Lures"],
+				desc = L["AutoLureMsg"],
+				arg = "lure",
+			},
+			sound = {
+				type = 'toggle',
+				name = L["Enhance Sounds"],
+				desc = L["EnhanceSoundsMsg"],
+				arg = "sound",
+			},
+			action = {
+				type = 'toggle',
+				name = L["Use Action"],
+				desc = L["UseActionMsg"],
+				arg = "action",
+			},
+		}
+	}
+	if (uiType == "dialog") then
+		options.args["desc"] = {
+				type = "description",
+				order = 0,
+				name = L["Description"],
+			}
+
+		options.args.loot.order = 1
+		options.args.loot.width = "full"
+		
+		options.args.lure.order = 2
+		options.args.lure.width = "full"
+		
+		options.args.sound.order = 3
+		options.args.sound.width = "full"
+		
+		options.args.action.order = 4
+		options.args.action.width = "full"
+	else
+		for arg,info in pairs(options.args) do
+			local onoff = db[info.arg] and "FF00FF00"..L["on"] or "FFFF0000"..L["off"]
+			options.args[arg].desc = options.args[arg].desc.." [|c"..onoff.."|r]"
+		end
+	end
+
+	-- Debugging
+	-- options.db = db
+	
+	return options
+end
+
+FishingAce = LibStub("AceAddon-3.0"):NewAddon("FishingAce", "AceConsole-3.0", "AceEvent-3.0", "AceTimer-3.0", "AceHook-3.0")
+
+local casting_timer;
+function FishingAce:PostCastUpdate(self)
 	local stop = true
 	if ( not InCombatLockdown() ) then
 		ResetFAButton()
@@ -130,18 +164,41 @@ local function PostCastUpdate(self)
 			end
 		end
 		if ( stop ) then
-			FishingAce:CancelScheduledEvent("FishingAce")
+			FishingAce:CancelTimer(casting_timer)
 		end
 	end
 end
 
 local function HideAwayAll(self, button, down)
 	if ( overrideOn ) then
-		FishingAce:ScheduleRepeatingEvent("FishingAce", PostCastUpdate, 1, self)
+		casting_timer = FishingAce:ScheduleRepeatingTimer("PostCastUpdate", 1, self)
 	end
 end
 
 function FishingAce:OnInitialize()
+	local defaults = {
+		profile = {
+			loot = true,
+			lure = false,
+			sound = true,
+			action = false,
+		},
+	}
+    self.db = LibStub("AceDB-3.0"):New("FishingAceDB", defaults, "Default")
+	db = self.db.profile
+
+	if AddonLoader and AddonLoader.RemoveInterfaceOptions then
+		AddonLoader:RemoveInterfaceOptions(ADDONNAME)
+	end
+	
+	LibStub("AceConfigRegistry-3.0"):RegisterOptionsTable(ADDONNAME, FAOptions)
+	LibStub("AceConfigDialog-3.0"):AddToBlizOptions(ADDONNAME, L["Fishing Ace!"])
+	
+	-- 	L["Slash-Commands"] = { "/fishingace", "/fa" }
+	local config = LibStub("AceConfigCmd-3.0")
+	config:CreateChatCommand("fishingace", ADDONNAME)
+	config:CreateChatCommand("fa", ADDONNAME)
+
 	local btn = CreateFrame("CheckButton", "FishingAceButton", UIParent, "SecureActionButtonTemplate")
 	btn:SetPoint("LEFT", UIParent, "RIGHT", 10000, 0)
 	btn:SetFrameStrata("LOW")
@@ -179,6 +236,7 @@ local function EnhanceFishingSounds(self, enhance)
             local mu = tonumber(GetCVar("Sound_MusicVolume"))
             local av = tonumber(GetCVar("Sound_AmbienceVolume"))
             local sv = tonumber(GetCVar("Sound_SFXVolume"))
+            local pd = tonumber(GetCVar("particleDensity"))
 			if ( not efsv ) then
 				-- collect the current value
 				efsv = {}
@@ -186,11 +244,13 @@ local function EnhanceFishingSounds(self, enhance)
                 efsv["Sound_MusicVolume"] = mu
                 efsv["Sound_AmbienceVolume"] = av
                 efsv["Sound_SFXVolume"] = sv
+				efsv["particleDensity"] = pd;
 				-- turn 'em off!
                 SetCVar("Sound_MasterVolume", 1.0)
                 SetCVar("Sound_SFXVolume", 1.0)
                 SetCVar("Sound_MusicVolume", 0.0)
                 SetCVar("Sound_AmbienceVolume", 0.0)
+                SetCVar("particleDensity", 1.0)
 			end
 		else
 			if ( efsv ) then
@@ -268,7 +328,7 @@ local function SetupLure()
 	if ( not AddingLure ) then
 		-- if the pole has an enchantment, we can assume it's got a lure on it (so far, anyway)
 		local hmhe,_,_,_,_,_ = GetWeaponEnchantInfo()
-		if ( FishingAce.db.profile.autoLure and not hmhe ) then
+		if ( FishingAce.db.profile.lure and not hmhe ) then
 			local itemid, name = GetBestLure()
 			if ( itemid ) then
 				local startTime, _, _ = GetItemCooldown(itemid)
@@ -289,7 +349,6 @@ local function SetupLure()
 	LastLure = nil
 	return false
 end
-FishingAce.SetupLure = SetupLure
 
 -- handle mouse up and mouse down in the WorldFrame so that we can steal
 -- the hardware events to implement 'Easy Cast'
@@ -339,39 +398,6 @@ function FishingAce:OnDisable()
 	if ( FishingBuddy and FishingBuddy.Message ) then
          FishingBuddy.Message(L["FishingAce on standby, easy cast enabled"]);
 	end
-end
-
-function FishingAce:IsEnhanceSounds()
-	return self.db.profile.enhanceSounds
-end
-
-function FishingAce:ToggleEnhanceSounds()
-	self.db.profile.enhanceSounds = not self.db.profile.enhanceSounds
-	EnhanceFishingSounds(self, self.db.profile.enhanceSounds)
-end
-
-function FishingAce:IsAutoLoot()
-	return self.db.profile.autoLoot
-end
-
-function FishingAce:ToggleAutoLoot()
-	self.db.profile.autoLoot = not self.db.profile.autoLoot
-end
-
-function FishingAce:IsAutoLure()
-	return self.db.profile.autoLure
-end
-
-function FishingAce:ToggleAutoLure()
-	self.db.profile.autoLure = not self.db.profile.autoLure
-end
-
-function FishingAce:IsUseAction()
-	return self.db.profile.useAction
-end
-
-function FishingAce:ToggleUseAction()
-	self.db.profile.useAction = not self.db.profile.useAction
 end
 
 function FishingAce:SPELLS_CHANGED()

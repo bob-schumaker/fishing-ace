@@ -3,43 +3,33 @@ package-as: FishingAce
 externals:
     Libs/LibStub:
         url: svn://svn.wowace.com/wow/libstub/mainline/trunk
-        tag: latest
-    Libs/AceAddon-2.0:
-        url: svn://svn.wowace.com/wow/ace2/mainline/trunk/AceAddon-2.0
-        tag: latest
-    Libs/AceConsole-2.0:
-        url: svn://svn.wowace.com/wow/ace2/mainline/trunk/AceConsole-2.0
-        tag: latest
-    Libs/AceDB-2.0:
-        url: svn://svn.wowace.com/wow/ace2/mainline/trunk/AceDB-2.0
-        tag: latest
-    Libs/AceEvent-2.0:
-        url: svn://svn.wowace.com/wow/ace2/mainline/trunk/AceEvent-2.0
-        tag: latest
-    Libs/AceHook-2.1:
-        url: svn://svn.wowace.com/wow/ace2/mainline/trunk/AceHook-2.1
-        tag: latest
-    Libs/AceLibrary:
-        url: svn://svn.wowace.com/wow/ace2/mainline/trunk/AceLibrary
-        tag: latest
-    Libs/AceLocale-2.2:
-        url: svn://svn.wowace.com/wow/ace2/mainline/trunk/AceLocale-2.2
-        tag: latest
-    Libs/AceOO-2.0:
-        url: svn://svn.wowace.com/wow/ace2/mainline/trunk/AceOO-2.0
-        tag: latest
-	Libs/LibCrayon-3.0:
+    Libs/CallbackHandler-1.0:
+        url: svn://svn.wowace.com/wow/callbackhandler/mainline/tags/1.0.3/CallbackHandler-1.0
+    Libs/AceAddon-3.0:
+        url: svn://svn.wowace.com/wow/ace3/mainline/trunk/AceAddon-3.0
+    Libs/AceEvent-3.0:
+        url: svn://svn.wowace.com/wow/ace3/mainline/trunk/AceEvent-3.0
+    Libs/AceHook-3.0:
+        url: svn://svn.wowace.com/wow/ace3/mainline/trunk/AceHook-3.0
+    Libs/AceDB-3.0:
+        url: svn://svn.wowace.com/wow/ace3/mainline/trunk/AceDB-3.0
+    Libs/AceDBOptions-3.0:
+        url: svn://svn.wowace.com/wow/ace3/mainline/trunk/AceDBOptions-3.0
+    Libs/AceLocale-3.0:
+        url: svn://svn.wowace.com/wow/ace3/mainline/trunk/AceLocale-3.0
+    Libs/AceGUI-3.0:
+        url: svn://svn.wowace.com/wow/ace3/mainline/trunk/AceGUI-3.0
+    Libs/AceConfig-3.0:
+        url: svn://svn.wowace.com/wow/ace3/mainline/trunk/AceConfig-3.0
+    Libs/LibCrayon-3.0:
         url: svn://svn.wowace.com/wow/libcrayon-3-0/mainline/trunk
-        tag: latest
-	Libs/LibBabble-Zone-3.0:
+    Libs/LibBabble-Zone-3.0:
         url: svn://svn.wowace.com/wow/libbabble-zone-3-0/mainline/trunk
-        tag: latest
-	Libs/LibTourist-3.0:
+    Libs/LibTourist-3.0:
         url: svn://svn.wowace.com/wow/libtourist-3-0/mainline/trunk
-        tag: latest
 
 required-dependencies:
-    - ace2
+    - ace3
     
 ignore:
      - .pkgmeta
