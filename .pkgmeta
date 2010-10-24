@@ -32,6 +32,9 @@ externals:
 
 required-dependencies:
     - ace3
+    - libcrayon-3-0
+    - libbabble-zone-3-0
+    - libtourist-3-0
     
 ignore:
      - .pkgmeta
