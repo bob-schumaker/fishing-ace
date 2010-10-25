@@ -77,9 +77,9 @@ FishingAceButton = nil
 
 local function ResetFAButton()
 	if (overrideOn) then
-		FishingAceButton:Hide()
-		ClearOverrideBindings(FishingAceButton)
 		overrideOn = false
+		ClearOverrideBindings(FishingAceButton)
+		FishingAceButton:Hide()
 	end
 end
 
@@ -150,28 +150,32 @@ end
 
 FishingAce = LibStub("AceAddon-3.0"):NewAddon("FishingAce", "AceConsole-3.0", "AceEvent-3.0", "AceTimer-3.0", "AceHook-3.0")
 
-local casting_timer;
+local casting_timer = null
 function FishingAce:PostCastUpdate(self)
 	local stop = true
+    ResetFAButton();
 	if ( not InCombatLockdown() ) then
-		ResetFAButton()
 		if ( AddingLure ) then
-			local sp, rk, dn, ic, st, et = UnitCastingInfo("player")
+			local sp, sub, txt, tex, st, et, trade, int = UnitChannelInfo("player");
 			if ( not sp or (dn and dn ~= LastLure) ) then
 				AddingLure = false
 			else
 				stop = false
 			end
 		end
-		if ( stop ) then
+		if ( stop and casting_timer ) then
 			FishingAce:CancelTimer(casting_timer)
+			casting_timer = null
 		end
 	end
 end
 
 local function HideAwayAll(self, button, down)
 	if ( overrideOn ) then
-		casting_timer = FishingAce:ScheduleRepeatingTimer("PostCastUpdate", 1, self)
+		ResetFAButton()
+		if ( not casting_timer ) then
+			casting_timer = FishingAce:ScheduleRepeatingTimer("PostCastUpdate", 1, self)
+		end
 	end
 end
 
@@ -199,13 +203,13 @@ function FishingAce:OnInitialize()
 	config:CreateChatCommand("fishingace", ADDONNAME)
 	config:CreateChatCommand("fa", ADDONNAME)
 
-	local btn = CreateFrame("CheckButton", "FishingAceButton", UIParent, "SecureActionButtonTemplate")
+	local btn = CreateFrame("Button", "FishingAceButton", UIParent, "SecureActionButtonTemplate")
 	btn:SetPoint("LEFT", UIParent, "RIGHT", 10000, 0)
 	btn:SetFrameStrata("LOW")
 	btn:EnableMouse(true)
 	btn:RegisterForClicks("RightButtonUp")
-	btn:Hide()
 	btn:SetScript("PostClick", HideAwayAll)
+	btn:Hide()
 end
 
 local function HijackCheck()

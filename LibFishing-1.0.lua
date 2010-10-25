@@ -2,10 +2,12 @@
 Name: FishLib-1.0
 Author(s): Sutorix <sutorix@hotmail.com>
 Description: A library with common routines used by FishingBuddy and addons.
+Copyright (c) by Bob Schumaker
+Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" License
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 3
+local MINOR_VERSION = 4
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -357,11 +359,18 @@ end
 
 -- look for double clicks
 function FishLib:CheckForDoubleClick()
+   if ( self:OnFishingBobber() ) then
+      local sp, _, _, _, _, _, trade, _ = UnitChannelInfo("player");
+      if ( sp ) then
+         return false;
+      end
+   end
    if ( self.lastClickTime ) then
       local pressTime = GetTime();
       local doubleTime = pressTime - self.lastClickTime;
-      if ( doubleTime < ACTIONDOUBLEWAIT and doubleTime > MINACTIONDOUBLECLICK ) then
+      if ( (doubleTime < ACTIONDOUBLEWAIT) and (doubleTime > MINACTIONDOUBLECLICK) ) then
          if ( not self.watchBobber or not self:OnFishingBobber() ) then
+            self.lastClickTime = nil;
             return true;
          end
       end
