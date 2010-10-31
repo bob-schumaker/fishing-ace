@@ -231,6 +231,16 @@ function FishLib:ChatLink(item, name, color)
    end
 end
 
+local function GetFishTooltip()
+   local tooltip = FishLibTooltip;
+   if ( not tooltip ) then
+      tooltip = CreateFrame("GameTooltip", "FishLibTooltip", UIParent, "GameTooltipTemplate");
+      tooltip:SetFrameStrata("TOOLTIP");
+      tooltip:SetOwner(WorldFrame, "ANCHOR_NONE");
+   end
+   return FishLibTooltip;
+end
+
 local fp_itemtype = nil;
 local fp_subtype = nil;
 local mainhand = nil;
@@ -240,9 +250,9 @@ function FishLib:GetPoleType()
       _,_,_,_,fp_itemtype,fp_subtype,_,_,_,_ = self:GetItemInfo(6256);
       if ( not fp_itemtype ) then
          -- make sure it's in our cache
-         GameTooltip:SetHyperlink("item:6256");
-         GameTooltip:Show();
-         GameTooltip:Hide();
+         local tooltip = GetFishTooltip();
+         tooltip:ClearLines();
+         tooltip:SetHyperlink("item:6256");
          _,_,_,_,fp_itemtype,fp_subtype,_,_,_,_ = self:GetItemInfo(6256);
       end
    end
@@ -707,13 +717,7 @@ function FishLib:FishingBonusPoints(item)
          -- Equip: Fishing skill increased by N.
          match[3] = skillname.."[%a%s]+(%d+)%.?$";
       end
-      local tooltip = FishLibTooltip;
-      if ( not tooltip ) then
-         tooltip = CreateFrame("GameTooltip", "FishLibTooltip", UIParent, "GameTooltipTemplate");
-         tooltip:SetFrameStrata("TOOLTIP");
-         tooltip:SetOwner(WorldFrame, "ANCHOR_NONE");
-         tooltip = FishLibTooltip;
-      end
+      local tooltip = GetFishTooltip();
       tooltip:ClearLines();
       local _, id, _ = self:SplitFishLink(item);
       if (not id) then
