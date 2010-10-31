@@ -7,7 +7,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 4
+local MINOR_VERSION = 5
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -50,6 +50,32 @@ if ( bobber[locale] ) then
    FishLib.BOBBER_NAME = bobber[locale];
 else
    FishLib.BOBBER_NAME = bobber["enUS"];
+end
+
+local slotinfo = {
+   [1] = { name = "HeadSlot", };
+   [2] = { name = "NeckSlot", },
+   [3] = { name = "ShoulderSlot", },
+   [4] = { name = "BackSlot", },
+   [5] = { name = "ChestSlot", },
+   [6] = { name = "ShirtSlot", },
+   [7] = { name = "TabardSlot", },
+   [8] = { name = "WristSlot", },
+   [9] = { name = "HandsSlot", },
+   [10] = { name = "WaistSlot", },
+   [11] = { name = "LegsSlot", },
+   [12] = { name = "FeetSlot", },
+   [13] = { name = "Finger0Slot", },
+   [14] = { name = "Finger1Slot", },
+   [15] = { name = "Trinket0Slot", },
+   [16] = { name = "Trinket1Slot", },
+   [17] = { name = "MainHandSlot", },
+   [18] = { name = "SecondaryHandSlot", },
+   [19] = { name = "RangedSlot", },
+}
+for i=1,19,1 do
+   local sn = slotinfo[i].name;
+   slotinfo[i].id, _ = GetInventorySlotInfo(sn);
 end
 
 local Crayon = LibStub("LibCrayon-3.0");
@@ -148,10 +174,12 @@ end
 
 -- this changes all the damn time
 -- "|c(%x+)|Hitem:(%d+)(:%d+):%d+:%d+:%d+:%d+:[-]?%d+:[-]?%d+:[-]?%d+:[-]?%d+|h%[(.*)%]|h|r"
+-- go with a fixed pattern, since sometimes the hyperlink trick appears not to work
+local _itempattern = "|c(%x+)|Hitem:(%d+)(:%d+)[-:%d]+|h%[(.*)%]|h|r"
 
-local _itempattern = nil;
 function FishLib:GetItemPattern()
    if ( not _itempattern ) then
+      -- This should work all the time
       self:GetPoleType(); -- force the default pole into the cache
       local _, pat, _, _, _, _, _, _ = GetItemInfo(6256);
       pat = string.gsub(pat, "|c(%x+)|Hitem:(%d+)(:%d+)", "|c(%%x+)|Hitem:(%%d+)(:%%d+)");
@@ -420,7 +448,8 @@ function FishLib:GetCurrentSkill()
    local _, _, _, fishing, _, _ = GetProfessions();
    if (fishing) then
       local name, _, rank, maxrank, _, _, _ = GetProfessionInfo(fishing);
-      return rank, 0, skillmax;
+      local mods = self:GetOutfitBonus();
+      return rank, mods, skillmax;
    end
    return 0, 0, 0;
 end
@@ -615,6 +644,104 @@ function FishLib:GetChatWindow(name)
    -- if we didn't find our frame, something bad has happened, so
    -- let's just use the default chat frame
    return DEFAULT_CHAT_FRAME, nil;
+end
+
+-- Secure action button
+function FishLib:CreateSAButton(name, postclick)
+   local btn = CreateFrame("Button", name, UIParent, "SecureActionButtonTemplate");
+   btn:SetPoint("LEFT", UIParent, "RIGHT", 10000, 0);
+   btn:SetFrameStrata("LOW");
+   btn:EnableMouse(true);
+   btn:RegisterForClicks("RightButtonUp");
+   btn:SetScript("PostClick", postclick);
+   btn:Hide();
+   self.sabutton = btn;
+
+   return btn;
+end
+
+function FishLib:InvokeFishing(useaction, btn)
+   btn = btn or self.sabutton;
+   if ( not btn ) then
+      return;
+   end
+   local _, name = self:GetFishingSkillInfo();
+   local findid = self:GetFishingActionBarID();   
+   if ( not useaction or not findid ) then
+     btn:SetAttribute("type", "spell");
+     btn:SetAttribute("spell", name);
+     btn:SetAttribute("action", nil);
+   else
+     btn:SetAttribute("type", "action");
+     btn:SetAttribute("action", findid);
+     btn:SetAttribute("spell", nil);
+   end
+   btn:SetAttribute("item", nil);
+   btn:SetAttribute("target-slot", nil);
+end
+
+function FishLib:InvokeLuring(id, btn)
+   btn = btn or self.sabutton;
+   if ( not btn ) then
+      return;
+   end
+   btn:SetAttribute("type", "item");
+   btn:SetAttribute("item", "item:"..id);
+   local slot = GetInventorySlotInfo("MainHandSlot");
+   btn:SetAttribute("target-slot", slot);
+   btn:SetAttribute("spell", nil);
+   btn:SetAttribute("action", nil);
+end
+
+-- Fishing bonus. We used to be able to get the current modifier from
+-- the skill API, but now we have to figure it out ourselves
+local match;
+function FishLib:FishingBonusPoints(item)
+   local points = 0;
+   if ( item and item ~= "" ) then
+      if ( not match ) then
+         local _,skillname = self:GetFishingSkillInfo(true);
+         match = {};
+         match[1] = "%+(%d+) "..skillname;
+         match[2] = skillname.." %+(%d+)";
+         -- Equip: Fishing skill increased by N.
+         match[3] = skillname.."[%a%s]+(%d+)%.?$";
+      end
+      local tooltip = FishLibTooltip;
+      if ( not tooltip ) then
+         tooltip = CreateFrame("GameTooltip", "FishLibTooltip", UIParent, "GameTooltipTemplate");
+         tooltip:SetFrameStrata("TOOLTIP");
+         tooltip:SetOwner(WorldFrame, "ANCHOR_NONE");
+         tooltip = FishLibTooltip;
+      end
+      tooltip:ClearLines();
+      local _, id, _ = self:SplitFishLink(item);
+      if (not id) then
+          item = "item:"..item;
+      end
+      tooltip:SetHyperlink(item);
+      for i=1,tooltip:NumLines() do
+         local mytext = getglobal(tooltip:GetName().."TextLeft" .. i)
+         local bodyslot = mytext:GetText()
+         for _,pat in ipairs(match) do
+            local _,_,bonus = string.find(bodyslot, pat);
+            if ( bonus ) then
+               points = points + bonus;
+            end
+         end
+      end
+   end
+   return points;
+end
+
+function FishLib:GetOutfitBonus()
+   local bonus = 0;
+   -- we can skip the ammo and ranged slots
+   for i=1,17,1 do
+      local link = GetInventoryItemLink("player", slotinfo[i].id);
+      bonus = bonus + self:FishingBonusPoints(link);
+   end
+   return bonus;
 end
 
 -- Pool types
