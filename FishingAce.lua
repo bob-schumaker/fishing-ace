@@ -389,7 +389,7 @@ function FishingAce:OnEnable()
 	self:RegisterEvent("PLAYER_REGEN_DISABLED")
 	
 	if ( FishingBuddy and FishingBuddy.Message ) then
-         FishingBuddy.Message(L["FishingAce is active, easy cast disabled"]);
+         FishingBuddy.Message(L["FishingAce is active, easy cast disabled."]);
 	end
 end
 

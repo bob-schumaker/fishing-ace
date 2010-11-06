@@ -21,4 +21,5 @@ if L then
 
 	L["LureSkill"] = "Utiliser: Attach\195\169 \195\160 votre canne \195\160 p\195\170che, il augmente votre comp\195\169tence de p\195\170che de (%d) points pendant %d minutes."
 	
+	L["FishingAce is active, easy cast disabled."] = "FishingAce is active, easy cast disabled."
 end

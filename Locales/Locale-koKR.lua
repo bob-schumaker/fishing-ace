@@ -21,4 +21,5 @@ if L then
 
 	L["LureSkill"] = "사용 효과: 낚싯대에 사용하면 %d분 동안 낚시 숙련도가 (%d)만큼 증가합니다."
 
+	L["FishingAce is active, easy cast disabled."] = "FishingAce is active, easy cast disabled."
 end
