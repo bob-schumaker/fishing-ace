@@ -39,7 +39,7 @@ local bobber = {};
 bobber["enUS"] = "Fishing Bobber";
 bobber["esES"] = "Anzuelo";
 bobber["esMX"] = "Anzuelo";
-bobber["deDE"] = "Blinker";
+bobber["deDE"] = "Schwimmer";
 bobber["frFR"] = "Fishing Bobber"; -- ned a translation for this...
 bobber["ruRU"] = "Поплавок";
 bobber["zhTW"] = "釣魚浮標";
@@ -706,7 +706,7 @@ end
 -- Fishing bonus. We used to be able to get the current modifier from
 -- the skill API, but now we have to figure it out ourselves
 local match;
-function FishLib:FishingBonusPoints(item)
+function FishLib:FishingBonusPoints(item, inv)
    local points = 0;
    if ( item and item ~= "" ) then
       if ( not match ) then
@@ -719,11 +719,15 @@ function FishLib:FishingBonusPoints(item)
       end
       local tooltip = GetFishTooltip();
       tooltip:ClearLines();
-      local _, id, _ = self:SplitFishLink(item);
-      if (not id) then
-          item = "item:"..item;
+      if (inv) then
+         tooltip:SetInventoryItem("player", item);
+      else
+         local _, id, _ = self:SplitFishLink(item);
+         if (not id) then
+            item = "item:"..item;
+         end
+         tooltip:SetHyperlink(item);
       end
-      tooltip:SetHyperlink(item);
       for i=1,tooltip:NumLines() do
          local mytext = getglobal(tooltip:GetName().."TextLeft" .. i)
          local bodyslot = mytext:GetText()
@@ -742,8 +746,7 @@ function FishLib:GetOutfitBonus()
    local bonus = 0;
    -- we can skip the ammo and ranged slots
    for i=1,17,1 do
-      local link = GetInventoryItemLink("player", slotinfo[i].id);
-      bonus = bonus + self:FishingBonusPoints(link);
+      bonus = bonus + self:FishingBonusPoints(i, 1);
    end
    return bonus;
 end
