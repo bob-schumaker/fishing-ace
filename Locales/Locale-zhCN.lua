@@ -5,8 +5,8 @@
 local L = LibStub("AceLocale-3.0"):NewLocale("FishingAce", "zhCN", false)
 
 if L then
-	L["on"] = "on"
-	L["off"] = "off"
+	L["on"] = "开"
+	L["off"] = "关"
 
 	L["Fishing Ace!"] = "Fishing Ace!"
 	L["Description"] = "Fishing Ace! enables you to fish with a double-click whenever it detects you're using a fishing pole. Settings to enhance your fishing experience can be set below."

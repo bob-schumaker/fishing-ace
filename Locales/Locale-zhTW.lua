@@ -1,11 +1,11 @@
 ﻿local L = LibStub("AceLocale-3.0"):NewLocale("FishingAce", "zhTW", false)
 
 if L then
-	L["on"] = "on"
-	L["off"] = "off"
+	L["on"] = "開"
+	L["off"] = "關"
 
 	L["Fishing Ace!"] = "Fishing Ace!"
-	L["Description"] = "Fishing Ace! enables you to fish with a double-click whenever it detects you're using a fishing pole. Settings to enhance your fishing experience can be set below."
+	L["Description"] = "Fishing Ace! 讓您釣魚雙擊時檢測到您使用的是釣竿。設置以提高你的捕魚經驗可以設置如下。"
 
 	L["Auto Loot"] = "自動拾取"
 	L["AutoLootMsg"] = "如果設定，在釣魚時會將自動拾取物品的選項暫時打開，而不會出現拾取物品視窗。"
