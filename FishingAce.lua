@@ -234,7 +234,7 @@ FishingAce.GetBestLure = GetBestLure
 -- even if we didn't do the switch to a fishing pole
 local efsv = nil
 local function EnhanceFishingSounds(self, enhance)
-	if ( self.db.profile.enhanceSounds ) then
+	if ( self.db.profile.sound ) then
 		if ( enhance ) then
             local mv = tonumber(GetCVar("Sound_MasterVolume"))
             local mu = tonumber(GetCVar("Sound_MusicVolume"))
@@ -274,7 +274,7 @@ local function StartFishingMode(self)
 			self.resetClickToMove = true
 			SetCVar("autointeract", "0")
 		end
-		if ( self.db.profile.autoLoot ) then
+		if ( self.db.profile.loot ) then
 			if ( not GetCVarBool("autoLootDefault") ) then
 				self.resetAutoLoot = true
 				SetCVar("autoLootDefault", 1)
