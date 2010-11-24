@@ -7,7 +7,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 5
+local MINOR_VERSION = 6
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -234,7 +234,7 @@ end
 local function GetFishTooltip()
    local tooltip = FishLibTooltip;
    if ( not tooltip ) then
-      tooltip = CreateFrame("GameTooltip", "FishLibTooltip", UIParent, "GameTooltipTemplate");
+      tooltip = CreateFrame("GameTooltip", "FishLibTooltip", nil, "GameTooltipTemplate");
       tooltip:SetFrameStrata("TOOLTIP");
       tooltip:SetOwner(WorldFrame, "ANCHOR_NONE");
    end
@@ -749,6 +749,30 @@ function FishLib:GetOutfitBonus()
       bonus = bonus + self:FishingBonusPoints(i, 1);
    end
    return bonus;
+end
+
+-- Find out where the player is. Based on code from Astrolabe and wowwiki notes
+function FishLib:GetCurrentPlayerPosition()
+   local x, y = GetPlayerMapPosition("player");
+   -- if the current location is 0,0 we need to call SetMapToCurrentZone()
+   if ( x <= 0 and y <= 0 ) then
+      -- find out where we are now
+      local lC, lZ = GetCurrentMapContinent(), GetCurrentMapZone();
+      SetMapToCurrentZone();
+      -- if we haven't changed zones yet, the zoom is incorrect
+      SetMapZoom(GetCurrentMapContinent());
+      x, y = GetPlayerMapPosition("player");
+      if ( x <= 0 and y <= 0 ) then
+         -- we are in an instance or otherwise off the continent map
+         return;
+      end
+      local C, Z = GetCurrentMapContinent(), GetCurrentMapZone();
+      if ( C ~= lC or Z ~= lZ ) then
+         SetMapZoom(lC, lZ); --set map zoom back to what it was before
+      end
+      return C, Z, x, y;
+   end
+   return GetCurrentMapContinent(), GetCurrentMapZone(), x, y;
 end
 
 -- Pool types
