@@ -7,7 +7,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 6
+local MINOR_VERSION = 9
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -40,7 +40,7 @@ bobber["enUS"] = "Fishing Bobber";
 bobber["esES"] = "Anzuelo";
 bobber["esMX"] = "Anzuelo";
 bobber["deDE"] = "Schwimmer";
-bobber["frFR"] = "Fishing Bobber"; -- ned a translation for this...
+bobber["frFR"] = "Fishing Bobber"; -- need a translation for this...
 bobber["ruRU"] = "Поплавок";
 bobber["zhTW"] = "釣魚浮標";
 bobber["zhCN"] = "垂钓水花";
@@ -77,6 +77,7 @@ for i=1,19,1 do
    local sn = slotinfo[i].name;
    slotinfo[i].id, _ = GetInventorySlotInfo(sn);
 end
+local mainhand = slotinfo[17].id;
 
 local Crayon = LibStub("LibCrayon-3.0");
 local LT = LibStub("LibTourist-3.0");
@@ -231,11 +232,18 @@ function FishLib:ChatLink(item, name, color)
    end
 end
 
-local function GetFishTooltip()
+function FishLib:GetFishTooltip(force)
    local tooltip = FishLibTooltip;
-   if ( not tooltip ) then
+   if ( force or not tooltip ) then
       tooltip = CreateFrame("GameTooltip", "FishLibTooltip", nil, "GameTooltipTemplate");
-      tooltip:SetFrameStrata("TOOLTIP");
+      tooltip:SetOwner(WorldFrame, "ANCHOR_NONE");
+-- Allow tooltip SetX() methods to dynamically add new lines based on these
+      tooltip:AddFontStrings(
+          tooltip:CreateFontString( "$parentTextLeft1", nil, "GameTooltipText" ),
+          tooltip:CreateFontString( "$parentTextRight1", nil, "GameTooltipText" ) )
+   end
+   local owner, anchor = tooltip:GetOwner();
+   if (not owner or not anchor) then
       tooltip:SetOwner(WorldFrame, "ANCHOR_NONE");
    end
    return FishLibTooltip;
@@ -243,14 +251,13 @@ end
 
 local fp_itemtype = nil;
 local fp_subtype = nil;
-local mainhand = nil;
 
 function FishLib:GetPoleType()
    if ( not fp_itemtype ) then
       _,_,_,_,fp_itemtype,fp_subtype,_,_,_,_ = self:GetItemInfo(6256);
       if ( not fp_itemtype ) then
          -- make sure it's in our cache
-         local tooltip = GetFishTooltip();
+         local tooltip = self:GetFishTooltip();
          tooltip:ClearLines();
          tooltip:SetHyperlink("item:6256");
          _,_,_,_,fp_itemtype,fp_subtype,_,_,_,_ = self:GetItemInfo(6256);
@@ -281,9 +288,6 @@ end
 function FishLib:IsFishingPole(itemLink)
    if (not itemLink) then
       -- Get the main hand item texture
-      if (not mainhand) then
-         mainhand = GetInventorySlotInfo("MainHandSlot");
-      end
       itemLink = GetInventoryItemLink("player", mainhand);
    end
    if ( itemLink ) then
@@ -397,12 +401,6 @@ end
 
 -- look for double clicks
 function FishLib:CheckForDoubleClick()
-   if ( self:OnFishingBobber() ) then
-      local sp, _, _, _, _, _, trade, _ = UnitChannelInfo("player");
-      if ( sp ) then
-         return false;
-      end
-   end
    if ( self.lastClickTime ) then
       local pressTime = GetTime();
       local doubleTime = pressTime - self.lastClickTime;
@@ -437,29 +435,24 @@ skillname["zhTW"] = "釣魚";
 skillname["zhCN"] = "釣魚";
 
 local FISHINGTEXTURE = "Interface\\Icons\\Trade_Fishing";
-function FishLib:GetFishingSkillInfo(force)
-   if ( force or not self.SpellID ) then
-      -- don't know how to find this yet, but I don't use it, so...
-      self.SpellID = nil;
+function FishLib:GetFishingSkillInfo()
+   local _, _, _, fishing, _, _ = GetProfessions();
+   if ( fishing ) then
+      local name, _, _, _, _, _, _ = GetProfessionInfo(fishing);
+      -- is this always the same as PROFESSIONS_FISHING?
+      return true, name;
    end
-   return self.SpellID, PROFESSIONS_FISHING;
+   return false, PROFESSIONS_FISHING;
 end
 
 -- get our current fishing skill level
 local lastSkillIndex = nil;
 function FishLib:GetCurrentSkill()
-   local _,fsn = self:GetFishingSkillInfo();
-   if ( self.lastSkillIndex ) then
-      local name, _, _, rank, _, modifier, skillmax = GetSkillLineInfo(self.lastSkillIndex);
-      if ( name == fsn )then
-         return rank, modifier, skillmax;
-      end
-   end
    local _, _, _, fishing, _, _ = GetProfessions();
    if (fishing) then
-      local name, _, rank, maxrank, _, _, _ = GetProfessionInfo(fishing);
-      local mods = self:GetOutfitBonus();
-      return rank, mods, skillmax;
+      local name, _, rank, skillmax, _, _, _ = GetProfessionInfo(fishing);
+      local mods, lure = self:GetOutfitBonus();
+      return rank, mods, skillmax, lure;
    end
    return 0, 0, 0;
 end
@@ -625,9 +618,9 @@ end
 function FishLib:FindChatWindow(name)
    local frame;
    for i = 1, NUM_CHAT_WINDOWS do
-      local tab = getglobal("ChatFrame" .. i .. "Tab");
-      if (tab:GetText() == name) then
-         return getglobal("ChatFrame" .. i), frametab;
+      local frame = getglobal("ChatFrame" .. i);
+      if (frame.name == name) then
+         return frame, getglobal("ChatFrame" .. i .. "Tab");
       end
    end
    -- return nil, nil;
@@ -636,20 +629,16 @@ end
 function FishLib:GetChatWindow(name)
    local frame, frametab = self:FindChatWindow(name);
    if ( frame ) then
-      if( not frametab:IsVisible() ) then 
-         frametab:Show(); 
+      if ( not frametab:IsVisible() ) then
+         -- Dock the frame by default
+         FCF_DockFrame(frame, (#FCFDock_GetChatFrames(GENERAL_CHAT_DOCK)+1), true);
+         FCF_FadeInChatFrame(FCFDock_GetSelectedWindow(GENERAL_CHAT_DOCK));
+         FCF_DockUpdate();
       end
       return frame, frametab;
    else
-      -- this doesn't return anything, so we have to assume we
-      -- can call again to find it
-      FCF_OpenNewWindow(name);
-      frame, frametab = self:FindChatWindow(name);
-      if ( frame ) then
-         FCF_SetLocked(frame, true, false);
-         ChatFrame_RemoveAllMessageGroups(frame);
-         return frame, frametab;
-      end
+      local frame = FCF_OpenNewWindow(name);
+      return self:FindChatWindow(name);
    end
    -- if we didn't find our frame, something bad has happened, so
    -- let's just use the default chat frame
@@ -665,6 +654,8 @@ function FishLib:CreateSAButton(name, postclick)
    btn:RegisterForClicks("RightButtonUp");
    btn:SetScript("PostClick", postclick);
    btn:Hide();
+   btn.name = name;
+
    self.sabutton = btn;
 
    return btn;
@@ -697,10 +688,34 @@ function FishLib:InvokeLuring(id, btn)
    end
    btn:SetAttribute("type", "item");
    btn:SetAttribute("item", "item:"..id);
-   local slot = GetInventorySlotInfo("MainHandSlot");
-   btn:SetAttribute("target-slot", slot);
+   btn:SetAttribute("target-slot", mainhand);
    btn:SetAttribute("spell", nil);
    btn:SetAttribute("action", nil);
+end
+
+function FishLib:OverrideClick(btn)
+   btn = btn or self.sabutton;
+   if ( not self.sabutton ) then
+      return;
+   end
+   SetOverrideBindingClick(btn, true, "BUTTON2", btn.name);
+end
+
+-- Taken from wowwiki tooltip handling suggestions
+local function EnumerateTooltipLines_helper(...)
+   local lines = {};
+   for i = 1, select("#", ...) do
+      local region = select(i, ...)
+      if region and region:GetObjectType() == "FontString" then
+         local text = region:GetText() -- string or nil
+         tinsert(lines, text or "");
+      end
+   end
+   return lines;
+end
+
+function FishLib:EnumerateTooltipLines(tooltip)
+    EnumerateTooltipLines_helper(tooltip:GetRegions())
 end
 
 -- Fishing bonus. We used to be able to get the current modifier from
@@ -717,7 +732,7 @@ function FishLib:FishingBonusPoints(item, inv)
          -- Equip: Fishing skill increased by N.
          match[3] = skillname.."[%a%s]+(%d+)%.?$";
       end
-      local tooltip = GetFishTooltip();
+      local tooltip = self:GetFishTooltip();
       tooltip:ClearLines();
       if (inv) then
          tooltip:SetInventoryItem("player", item);
@@ -728,9 +743,9 @@ function FishLib:FishingBonusPoints(item, inv)
          end
          tooltip:SetHyperlink(item);
       end
-      for i=1,tooltip:NumLines() do
-         local mytext = getglobal(tooltip:GetName().."TextLeft" .. i)
-         local bodyslot = mytext:GetText()
+      local lines = EnumerateTooltipLines_helper(tooltip:GetRegions())
+      for i=1,#lines do
+         local bodyslot = lines[i];
          for _,pat in ipairs(match) do
             local _,_,bonus = string.find(bodyslot, pat);
             if ( bonus ) then
@@ -745,10 +760,211 @@ end
 function FishLib:GetOutfitBonus()
    local bonus = 0;
    -- we can skip the ammo and ranged slots
-   for i=1,17,1 do
-      bonus = bonus + self:FishingBonusPoints(i, 1);
+   for i=1,16,1 do
+      bonus = bonus + self:FishingBonusPoints(slotinfo[i].id, 1);
    end
-   return bonus;
+   local pole, lure = self:GetPoleBonus();
+   return bonus + pole, lure;
+end
+
+-- if we have a fishing pole, return the bonus from the pole
+-- and the bonus from a lure, if any, separately
+function FishLib:GetPoleBonus()
+   if (self:IsFishingPole()) then
+      -- get the total bonus for the pole
+      local total = self:FishingBonusPoints(mainhand, true);
+      local hmhe,_,_,_,_,_ = GetWeaponEnchantInfo();
+      if ( hmhe ) then
+         -- IsFishingPole has set mainhand for us
+         local itemLink = GetInventoryItemLink("player", mainhand);
+         local _, id, _ = self:SplitFishLink(itemLink);
+         -- get the raw value of the pole without any temp enchants
+         local pole = self:FishingBonusPoints("item:"..id);
+         return total, total - pole;
+      else
+         -- no enchant, all pole
+         return total, 0;
+      end
+   end
+   return 0, 0;
+end
+
+-- Lure library
+local FISHINGLURES = {
+   {  ["id"] = 34832,
+      ["n"] = "Captain Rumsey's Lager",           -- 25 for 10 mins
+      ["b"] = 10,
+      ["s"] = 1,
+      ["d"] = 3,
+      ["u"] = 1,
+   },
+   {  ["id"] = 6529,
+      ["n"] = "Shiny Bauble",                     -- 25 for 10 mins
+      ["b"] = 25,
+      ["s"] = 1,
+      ["d"] = 10,
+   },
+   {  ["id"] = 6811,
+      ["n"] = "Aquadynamic Fish Lens",            -- 50 for 10 mins
+      ["b"] = 50,
+      ["s"] = 50,
+      ["d"] = 10,
+   },
+   {  ["id"] = 6530,
+      ["n"] = "Nightcrawlers",                    -- 50 for 10 mins
+      ["b"] = 50,
+      ["s"] = 50,
+      ["d"] = 10,
+   },
+   {  ["id"] = 33820,
+      ["n"] = "Weather-Beaten Fishing Hat",       -- 75 for 10 minutes
+      ["b"] = 75,
+      ["s"] = 1,
+      ["d"] = 10,
+      ["w"] = true,
+   },
+   {  ["id"] = 7307,
+      ["n"] = "Flesh Eating Worm",                -- 75 for 10 mins
+      ["b"] = 75,
+      ["s"] = 100,
+      ["d"] = 10,
+   },
+   {  ["id"] = 6532,
+      ["n"] = "Bright Baubles",                   -- 75 for 10 mins
+      ["b"] = 75,
+      ["s"] = 100,
+      ["d"] = 10,
+   },
+   {  ["id"] = 34861,
+      ["n"] = "Sharpened Fish Hook",              -- 100 for 10 minutes
+      ["b"] = 100,
+      ["s"] = 100,
+      ["d"] = 10,
+   },
+   {  ["id"] = 6533,
+      ["n"] = "Aquadynamic Fish Attractor",       -- 100 for 10 minutes
+      ["b"] = 100,
+      ["s"] = 100,
+      ["d"] = 10,
+   },
+   {  ["id"] = 62673,
+      ["n"] = "Feathered Lure",      		 	  -- 100 for 60 minutes
+      ["b"] = 100,
+      ["s"] = 100,
+      ["d"] = 10,
+   },
+   {  ["id"] = 46006,
+      ["n"] = "Glow Worm",       		 		  -- 100 for 60 minutes
+      ["b"] = 100,
+      ["s"] = 100,
+      ["d"] = 60,
+   },
+}
+
+-- sort ascending bonus and ascending time
+table.sort(FISHINGLURES,
+   function(a,b)
+      if ( a.b == b.b ) then
+         return a.d < b.d;
+      else
+         return a.b < b.b;
+      end
+   end);
+
+function FishLib:GetLureTable()
+   return FISHINGLURES;
+end
+
+local useinventory = {};
+local lureinventory = {};
+function FishLib:UpdateLureInventory()
+   local rawskill, mods, _, _ = self:GetCurrentSkill();
+
+   useinventory  = {};
+   lureinventory  = {};
+   for _,lure in ipairs(FISHINGLURES) do
+      local id = lure.id;
+      local count = GetItemCount(id);
+      -- does this lure have to be "worn"
+      if ( count > 0 ) then
+         if ( lure.u ) then
+            tinsert(useinventory, lure);
+         elseif ( lure.s <= rawskill ) then
+            if ( not lure.w or self:IsWorn(id)) then
+               tinsert(lureinventory, lure);
+            end
+         end
+         -- get the name so we can check enchants
+         lure.n,_,_,_,_,_,_,_,_,_ = GetItemInfo(id);
+      end
+   end
+   return lureinventory, useinventory;
+ end
+
+function FishLib:GetLureInventory()
+   return lureinventory, useinventory;
+end
+
+function FishLib:HasBuff(buffName)
+    local name, _, _, _, _, _, _, _, _ = UnitBuff("player", buffName);
+    return name ~= nil;
+end
+
+function FishLib:FindNextLure(b, state)
+   local n = table.getn(lureinventory);
+   for s=state+1,n,1 do
+      if ( lureinventory[s] ) then
+         local id = lureinventory[s].id;
+         local startTime, _, _ = GetItemCooldown(id);
+         if ( startTime == 0 ) then
+            if ( not b or lureinventory[s].b > b ) then 
+               return s, lureinventory[s];
+            end
+         end
+      end
+   end
+   -- return nil;
+end
+
+function FishLib:FindBestLure(b, state, usedrinks)
+   local zone, subzone = self:GetZoneInfo();
+   local level = LT:GetFishingLevel(zone);
+   if ( level ) then
+      local rank, modifier, skillmax, enchant = self:GetCurrentSkill();
+      local skill = rank + modifier;
+      level = level + 95;		-- for no lost fish
+      if ( skill < level ) then
+         -- if drinking will work, then we're done
+         if ( usedrinks and #useinventory > 0 ) then
+            if ( not LastUsed or not self:HasBuff(LastUsed.n) ) then
+               local id = useinventory[1].id;
+               if ( not self:HasBuff(useinventory[1].n) ) then
+                  if ( level <= (skill + useinventory[1].b) ) then
+                     return nil, useinventory[1];
+                  end
+               end
+            end
+         end
+         skill = skill - enchant;
+         state = state or 0;
+         for s=state+1,#lureinventory,1 do
+            if ( lureinventory[s] ) then
+               local id = lureinventory[s].id;
+               local startTime, _, _ = GetItemCooldown(id);
+               local bonus = lureinventory[s].b;
+               if ( startTime == 0 and level <= (skill + bonus) and (bonus > enchant) ) then
+                  if ( not b or bonus > b ) then 
+                     return s, lureinventory[s];
+                  end
+               end
+            end
+         end
+      end
+      -- return nil;
+   else
+      return self:FindNextLure(b, state);
+   end
+   -- return nil;
 end
 
 -- Find out where the player is. Based on code from Astrolabe and wowwiki notes

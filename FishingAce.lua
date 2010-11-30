@@ -203,13 +203,8 @@ function FishingAce:OnInitialize()
 	config:CreateChatCommand("fishingace", ADDONNAME)
 	config:CreateChatCommand("fa", ADDONNAME)
 
-	local btn = CreateFrame("Button", "FishingAceButton", UIParent, "SecureActionButtonTemplate")
-	btn:SetPoint("LEFT", UIParent, "RIGHT", 10000, 0)
-	btn:SetFrameStrata("LOW")
-	btn:EnableMouse(true)
-	btn:RegisterForClicks("RightButtonUp")
-	btn:SetScript("PostClick", HideAwayAll)
-	btn:Hide()
+    FL:CreateSAButton("FishingAceButton", HideAwayAll)
+    FL:WatchBobber(false)
 end
 
 local function HijackCheck()
@@ -217,18 +212,6 @@ local function HijackCheck()
 		return true
 	end
 end
-
-local function GetBestLure()
-	for id,lure in pairs(FISHINGLURES) do
-		local count = GetItemCount(id)
-		if ( count > 0 ) then
-			lure.n = GetItemInfo(id)
-			return id, lure.n
-		end
-	end
-	-- return nil, nil
-end
-FishingAce.GetBestLure = GetBestLure
 
 -- do everything we think is necessary when we start fishing
 -- even if we didn't do the switch to a fishing pole
@@ -309,48 +292,20 @@ local function FishingMode(self)
 	end
 end
 
-local function SetupFishing()
-	if ( FishingAce.db.profile.useAction ) then
-		local id = FL:GetFishingActionBarID()
-		if ( id ) then
-			FishingAceButton:SetAttribute("type", "action")
-			FishingAceButton:SetAttribute("action", id)
-		end
-	else
-		local _,name = FL:GetFishingSkillInfo()
-		if ( name ) then
-			FishingAceButton:SetAttribute("type", "spell")
-			FishingAceButton:SetAttribute("spell", name)
-		end
-	end
-	FishingAceButton:SetAttribute("item", nil)
-	FishingAceButton:SetAttribute("target-slot", nil)
-end
-
 local LastLure
 local function SetupLure()
 	if ( not AddingLure ) then
-		-- if the pole has an enchantment, we can assume it's got a lure on it (so far, anyway)
-		local hmhe,_,_,_,_,_ = GetWeaponEnchantInfo()
-		if ( FishingAce.db.profile.lure and not hmhe ) then
-			local itemid, name = GetBestLure()
-			if ( itemid ) then
-				local startTime, _, _ = GetItemCooldown(itemid)
-				if ( startTime == 0) then
-					FishingAceButton:SetAttribute("type", "item")
-					FishingAceButton:SetAttribute("item", "item:"..itemid)
-					local slot = GetInventorySlotInfo("MainHandSlot")
-					FishingAceButton:SetAttribute("target-slot", slot)
-					FishingAceButton:SetAttribute("spell", nil)
-					FishingAceButton:SetAttribute("action", nil)
-					AddingLure = true
-					LastLure = name
-					return true
-				end
+		if ( FishingAce.db.profile.lure ) then
+            local pole, tempenchant = FL:GetPoleBonus()
+            local state, bestlure = FL:FindBestLure(tempenchant, 0)
+			if ( state and bestlure ) then
+			   FL:InvokeLuring(bestlure.id)
+			   AddingLure = true
+			   LastLure = bestlure.n
+			   return true
 			end
 		end
 	end
-	LastLure = nil
 	return false
 end
 
@@ -368,9 +323,9 @@ local function WF_OnMouseDown(...)
 				MouselookStop()
 			end
 			if ( not SetupLure() ) then
-				SetupFishing()
+				FL:InvokeFishing(FishingAce.db.profile.action)
 			end
-			SetOverrideBindingClick(FishingAceButton, true, "BUTTON2", "FishingAceButton")
+			FL:OverrideClick()
 			overrideOn = true
 		end
 	end
