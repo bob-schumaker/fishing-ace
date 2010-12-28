@@ -1,13 +1,14 @@
 ﻿--[[
+$Id$
 Name: FishLib-1.0
-Author(s): Sutorix <sutorix@hotmail.com>
-Description: A library with common routines used by FishingBuddy and addons.
+Maintainers: Sutorix <sutorix@hotmail.com>
+Description: A library with common routines used by Fishing Buddy and Fishing Ace.
 Copyright (c) by Bob Schumaker
 Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" License
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 9
+local MINOR_VERSION = 11
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -34,6 +35,187 @@ else
    WOW.minor = 9;
    WOW.dot = 0;
 end
+
+function FishLib:GetFishingSkillInfo()
+   local _, _, _, fishing, _, _ = GetProfessions();
+   if ( fishing ) then
+      local name, _, _, _, _, _, _ = GetProfessionInfo(fishing);
+      -- is this always the same as PROFESSIONS_FISHING?
+      return true, name;
+   end
+   return false, PROFESSIONS_FISHING;
+end
+
+-- get our current fishing skill level
+function GetCurrentSkill(self)
+   local _, _, _, fishing, _, _ = GetProfessions();
+   if (fishing) then
+      local name, _, rank, skillmax, _, _, _, mods = GetProfessionInfo(fishing);
+      local _, lure = FishLib:GetPoleBonus();
+      return rank, mods, skillmax, lure;
+   end
+   return 0, 0, 0;
+end
+FishLib.GetCurrentSkill = GetCurrentSkill;
+
+-- Lure library
+local FISHINGLURES = {
+   {  ["id"] = 34832,
+      ["n"] = "Captain Rumsey's Lager",           -- 25 for 10 mins
+      ["b"] = 10,
+      ["s"] = 1,
+      ["d"] = 3,
+      ["u"] = 1,
+   },
+   {  ["id"] = 6529,
+      ["n"] = "Shiny Bauble",                     -- 25 for 10 mins
+      ["b"] = 25,
+      ["s"] = 1,
+      ["d"] = 10,
+   },
+   {  ["id"] = 6811,
+      ["n"] = "Aquadynamic Fish Lens",            -- 50 for 10 mins
+      ["b"] = 50,
+      ["s"] = 50,
+      ["d"] = 10,
+   },
+   {  ["id"] = 6530,
+      ["n"] = "Nightcrawlers",                    -- 50 for 10 mins
+      ["b"] = 50,
+      ["s"] = 50,
+      ["d"] = 10,
+   },
+   {  ["id"] = 33820,
+      ["n"] = "Weather-Beaten Fishing Hat",       -- 75 for 10 minutes
+      ["b"] = 75,
+      ["s"] = 1,
+      ["d"] = 10,
+      ["w"] = true,
+   },
+   {  ["id"] = 7307,
+      ["n"] = "Flesh Eating Worm",                -- 75 for 10 mins
+      ["b"] = 75,
+      ["s"] = 100,
+      ["d"] = 10,
+   },
+   {  ["id"] = 6532,
+      ["n"] = "Bright Baubles",                   -- 75 for 10 mins
+      ["b"] = 75,
+      ["s"] = 100,
+      ["d"] = 10,
+   },
+   {  ["id"] = 34861,
+      ["n"] = "Sharpened Fish Hook",              -- 100 for 10 minutes
+      ["b"] = 100,
+      ["s"] = 100,
+      ["d"] = 10,
+   },
+   {  ["id"] = 6533,
+      ["n"] = "Aquadynamic Fish Attractor",       -- 100 for 10 minutes
+      ["b"] = 100,
+      ["s"] = 100,
+      ["d"] = 10,
+   },
+   {  ["id"] = 62673,
+      ["n"] = "Feathered Lure",      		 	  -- 100 for 10 minutes
+      ["b"] = 100,
+      ["s"] = 100,
+      ["d"] = 10,
+   },
+   {  ["id"] = 46006,
+      ["n"] = "Glow Worm",       		 		  -- 100 for 60 minutes
+      ["b"] = 100,
+      ["s"] = 100,
+      ["d"] = 60,
+   },
+   {  ["id"] = 68049,
+      ["n"] = "Heat-Treated Spinning Lure",       -- 100 for 5 minutes
+      ["b"] = 150,
+      ["s"] = 250,
+      ["d"] = 5,
+   },
+}
+
+-- sort ascending bonus and ascending time
+-- we may have to treat "Heat-Treated Spinning Lure" differently someday
+table.sort(FISHINGLURES,
+   function(a,b)
+      if ( a.b == b.b ) then
+         return a.d < b.d;
+      else
+         return a.b < b.b;
+      end
+   end);
+
+function FishLib:GetLureTable()
+   return FISHINGLURES;
+end
+
+function FishLib:IsWorn(itemid)
+   for slot=1,19 do
+      local link = GetInventoryItemLink("player", slot);
+      if ( link ) then
+         local _, id, _ = self:SplitFishLink(link);
+         if ( itemid == id ) then
+            return true;
+         end
+      end
+   end
+   -- return nil
+end
+
+local useinventory = {};
+local lureinventory = {};
+function UpdateLureInventory()
+   local rawskill, _, _, _ = GetCurrentSkill();
+
+   useinventory  = {};
+   lureinventory  = {};
+   for _,lure in ipairs(FISHINGLURES) do
+      local id = lure.id;
+      local count = GetItemCount(id);
+      -- does this lure have to be "worn"
+      if ( count > 0 ) then
+         if ( lure.u ) then
+            tinsert(useinventory, lure);
+         elseif ( lure.s <= rawskill ) then
+            if ( not lure.w or FishLib:IsWorn(id)) then
+               tinsert(lureinventory, lure);
+            end
+         end
+         -- get the name so we can check enchants
+         lure.n,_,_,_,_,_,_,_,_,_ = GetItemInfo(id);
+      end
+   end
+   return lureinventory, useinventory;
+ end
+FishLib.UpdateLureInventory = UpdateLureInventory;
+
+function FishLib:GetLureInventory()
+   return lureinventory, useinventory;
+end
+
+-- Handle events we care about
+local canCreateFrame = false;
+local isLooting = false;
+
+local libfishframe = CreateFrame("Frame");
+libfishframe:RegisterEvent("UPDATE_CHAT_WINDOWS");
+libfishframe:RegisterEvent("LOOT_OPENED");
+libfishframe:RegisterEvent("LOOT_CLOSED");
+libfishframe:RegisterEvent("SKILL_LINES_CHANGED");
+libfishframe:RegisterEvent("UNIT_INVENTORY_CHANGED");
+
+libfishframe:SetScript("OnEvent", function(self, event, ...)
+   if ( event == "UPDATE_CHAT_WINDOWS" ) then
+      canCreateFrame = true;
+      self:UnregisterEvent(event);
+   elseif ( event == "SKILL_LINES_CHANGED" or event == "UNIT_INVENTORY_CHANGED") then
+      UpdateLureInventory();
+   else
+      isLooting = (event == "LOOT_OPENED");
+   end
+end);
 
 local bobber = {};
 bobber["enUS"] = "Fishing Bobber";
@@ -82,6 +264,33 @@ local mainhand = slotinfo[17].id;
 local Crayon = LibStub("LibCrayon-3.0");
 local LT = LibStub("LibTourist-3.0");
 
+function FishLib:copytable(tab, level)
+   local t = {};
+   if (tab) then
+      level = level or 10000;
+      for k,v in pairs(tab) do
+         if ( type(v) == "table" and level > 0 ) then
+            level = level - 1;
+            t[k] = self:copytable(v, level);
+         else
+            t[k] = v;
+         end
+      end
+   end
+   return t;
+end
+
+-- count tables that don't have monotonic integer indexes
+function FishLib:tablecount(tab)
+   local n = 0;
+   for k,v in pairs(tab) do
+      n = n + 1;
+   end
+   return n;
+end
+
+-- translation support functions
+-- replace #KEYWORD# with the value of keyword (which might be a color)
 local function FixupThis(target, tag, what)
    if ( type(what) == "table" ) then
       for idx,str in pairs(what) do
@@ -161,22 +370,20 @@ function FishLib:Translate(addon, source, target, record)
    FixupBindings(source, target);
 end
 
-function FishLib:tonil(val, tostr)
-   if ( not val ) then
+function FishLib:printable(val)
+   if ( val == nil ) then
       return "nil";
+   elseif (type(val) == "boolean") then
+      return val and "true" or "false";
    else
-      if ( tostr ) then
-         return ""..val;
-      else
-         return val;
-      end
+      return ""..val;
    end
 end
 
 -- this changes all the damn time
 -- "|c(%x+)|Hitem:(%d+)(:%d+):%d+:%d+:%d+:%d+:[-]?%d+:[-]?%d+:[-]?%d+:[-]?%d+|h%[(.*)%]|h|r"
 -- go with a fixed pattern, since sometimes the hyperlink trick appears not to work
-local _itempattern = "|c(%x+)|Hitem:(%d+)(:%d+)[-:%d]+|h%[(.*)%]|h|r"
+local _itempattern = "|c(%x+)|Hitem:([^:]+):([^:]+)[-:%d]+|h%[(.*)%]|h|r"
 
 function FishLib:GetItemPattern()
    if ( not _itempattern ) then
@@ -192,15 +399,17 @@ end
 
 function FishLib:SplitLink(link)
    if ( link ) then
-      local _,_, color, id, item, name = string.find(link, self:GetItemPattern());
-      return color, id..item, name;
+      local _,_, color, id, enchant, name = string.find(link, self:GetItemPattern());
+      if ( name ) then
+         return color, id..":"..enchant, name;
+      end
    end
 end
 
 function FishLib:SplitFishLink(link)
    if ( link ) then
-      local _,_, color, id, item, name = string.find(link, self:GetItemPattern());
-      return color, tonumber(id), name;
+      local _,_, color, id, enchant, name = string.find(link, self:GetItemPattern());
+      return color, tonumber(id), name, enchant;
    end
 end
 
@@ -232,16 +441,19 @@ function FishLib:ChatLink(item, name, color)
    end
 end
 
+-- code taken from examples on wowwiki
 function FishLib:GetFishTooltip(force)
    local tooltip = FishLibTooltip;
    if ( force or not tooltip ) then
       tooltip = CreateFrame("GameTooltip", "FishLibTooltip", nil, "GameTooltipTemplate");
       tooltip:SetOwner(WorldFrame, "ANCHOR_NONE");
 -- Allow tooltip SetX() methods to dynamically add new lines based on these
-      tooltip:AddFontStrings(
-          tooltip:CreateFontString( "$parentTextLeft1", nil, "GameTooltipText" ),
-          tooltip:CreateFontString( "$parentTextRight1", nil, "GameTooltipText" ) )
+-- I don't think we need it if we use GameTooltipTemplate...
+--      tooltip:AddFontStrings(
+--          tooltip:CreateFontString( "$parentTextLeft9", nil, "GameTooltipText" ),
+--          tooltip:CreateFontString( "$parentTextRight9", nil, "GameTooltipText" ) )
    end
+   -- the owner gets unset sometimes, not sure why
    local owner, anchor = tooltip:GetOwner();
    if (not owner or not anchor) then
       tooltip:SetOwner(WorldFrame, "ANCHOR_NONE");
@@ -307,24 +519,11 @@ function FishLib:IsFishingPole(itemLink)
                 return true;
              end
           end
-      else
+      elseif ( fp_itemtype and fp_subtype ) then
          return (itemtype == fp_itemtype) and (subtype == fp_subtype);
       end
    end
    return false;
-end
-
-function FishLib:IsWorn(itemid)
-   for slot=1,19 do
-      local link = GetInventoryItemLink("player", slot);
-      if ( link ) then
-         local _, id, _ = self:SplitFishLink(link);
-         if ( itemid == id ) then
-            return true;
-         end
-      end
-   end
-   -- return nil
 end
 
 -- fish tracking skill
@@ -394,14 +593,14 @@ end
 local ACTIONDOUBLEWAIT = 0.4;
 local MINACTIONDOUBLECLICK = 0.05;
 
-FishLib.watchBobber = true;
+FishLib.watchBobber = false;
 function FishLib:WatchBobber(flag)
    self.watchBobber = flag;
 end
 
 -- look for double clicks
 function FishLib:CheckForDoubleClick()
-   if ( self.lastClickTime ) then
+   if ( not isLooting and self.lastClickTime ) then
       local pressTime = GetTime();
       local doubleTime = pressTime - self.lastClickTime;
       if ( (doubleTime < ACTIONDOUBLEWAIT) and (doubleTime > MINACTIONDOUBLECLICK) ) then
@@ -422,39 +621,6 @@ function FishLib:ExtendDoubleClick()
    if ( self.lastClickTime ) then
       self.lastClickTime = self.lastClickTime + ACTIONDOUBLEWAIT/2;
    end
-end
-
-local skillname = {};
-skillname["enUS"] = "Fishing";
-skillname["esES"] = "Pesca";
-skillname["esMX"] = "Pesca";
-skillname["deDE"] = "Angeln";
-skillname["frFR"] = "P\195\170che";
-skillname["ruRU"] = "Рыбная ловля";
-skillname["zhTW"] = "釣魚";
-skillname["zhCN"] = "釣魚";
-
-local FISHINGTEXTURE = "Interface\\Icons\\Trade_Fishing";
-function FishLib:GetFishingSkillInfo()
-   local _, _, _, fishing, _, _ = GetProfessions();
-   if ( fishing ) then
-      local name, _, _, _, _, _, _ = GetProfessionInfo(fishing);
-      -- is this always the same as PROFESSIONS_FISHING?
-      return true, name;
-   end
-   return false, PROFESSIONS_FISHING;
-end
-
--- get our current fishing skill level
-local lastSkillIndex = nil;
-function FishLib:GetCurrentSkill()
-   local _, _, _, fishing, _, _ = GetProfessions();
-   if (fishing) then
-      local name, _, rank, skillmax, _, _, _ = GetProfessionInfo(fishing);
-      local mods, lure = self:GetOutfitBonus();
-      return rank, mods, skillmax, lure;
-   end
-   return 0, 0, 0;
 end
 
 function FishLib:GetZoneInfo()
@@ -482,7 +648,7 @@ function FishLib:GetFishingSkillLine(join, withzone, caughtSoFar)
    end
    if ( level ) then
        if ( level > 0 ) then
-         local perc = totskill/(level+95); -- no get aways
+         local perc = totskill/level; -- no get aways
          if (perc > 1.0) then
             perc = 1.0;
          end
@@ -507,23 +673,51 @@ function FishLib:GetFishingSkillLine(join, withzone, caughtSoFar)
    return part1, part2;
 end
 
+-- table taken from El's Anglin' pages
+-- More accurate than the previous (skill - 75) / 25 calculation now
+local skilltable = {};
+tinsert(skilltable, { ["level"] = 115, ["inc"] = 1 });
+tinsert(skilltable, { ["level"] = 150, ["inc"] = 2 });
+tinsert(skilltable, { ["level"] = 170, ["inc"] = 3 });
+tinsert(skilltable, { ["level"] = 190, ["inc"] = 4 });
+tinsert(skilltable, { ["level"] = 215, ["inc"] = 5 });
+tinsert(skilltable, { ["level"] = 235, ["inc"] = 6 });
+tinsert(skilltable, { ["level"] = 260, ["inc"] = 7 });
+tinsert(skilltable, { ["level"] = 280, ["inc"] = 8 });
+tinsert(skilltable, { ["level"] = 295, ["inc"] = 9 });
+tinsert(skilltable, { ["level"] = 300, ["inc"] = 12 });
+tinsert(skilltable, { ["level"] = 325, ["inc"] = 9 });
+tinsert(skilltable, { ["level"] = 365, ["inc"] = 10 });
+tinsert(skilltable, { ["level"] = 450, ["inc"] = 11 });
+tinsert(skilltable, { ["level"] = 500, ["inc"] = 9 });
+tinsert(skilltable, { ["level"] = 525, ["inc"] = 10 });
+
+function FishLib:CatchesAtSkill(skill)
+   for _,chk in ipairs(skilltable) do
+      if ( skill < chk.level ) then
+         return chk.inc;
+      end
+   end
+   -- return nil;
+end
+
 function FishLib:GetSkillUpInfo(lastSkillCheck, caughtSoFar)
    local skill, mods, skillmax = self:GetCurrentSkill();
    if ( skillmax and skill < skillmax ) then
       -- guess high instead of low on how many more we need
-      local needed = math.ceil((skill - 75) / 25);
-      if ( needed < 1 ) then
-         needed = 1;
+      local needed = self:CatchesAtSkill(skill);
+      if ( needed ) then
+         if ( not lastSkillCheck or lastSkillCheck ~= skill ) then
+            caughtSoFar = 0;
+            lastSkillCheck = skill;
+         end
+         return lastSkillCheck, caughtSoFar, needed;
       end
-      if ( not lastSkillCheck or lastSkillCheck ~= skill ) then
-         caughtSoFar = 0;
-         lastSkillCheck = skill;
-      end
-      return lastSkillCheck, caughtSoFar, needed;
    end
    return lastSkillCheck, caughtSoFar, nil;
 end
 
+local FISHINGTEXTURE = "Interface\\Icons\\Trade_Fishing";
 function FishLib:GetFishingActionBarID(force)
    if ( force or not self.ActionBarID ) then
       for slot=1,72 do
@@ -601,16 +795,19 @@ local function AddTooltipLine(l)
    end
 end
 
-function FishLib:AddTooltip(text)
+function FishLib:AddTooltip(text, tooltip)
+   if ( not tooltip ) then
+      tooltip = GameTooltip;
+   end
    local c = color or {{}, {}};
    if ( text ) then
       if ( type(text) == "table" ) then
          for _,l in pairs(text) do
-            AddTooltipLine(l);
+            AddTooltipLine(l, tooltip);
          end
       else
          -- AddTooltipLine(text, color);
-         GameTooltip:AddLine(text,nil,nil,nil,1);
+         tooltip:AddLine(text,nil,nil,nil,1);
       end
    end
 end
@@ -627,18 +824,23 @@ function FishLib:FindChatWindow(name)
 end
 
 function FishLib:GetChatWindow(name)
-   local frame, frametab = self:FindChatWindow(name);
-   if ( frame ) then
-      if ( not frametab:IsVisible() ) then
-         -- Dock the frame by default
-         FCF_DockFrame(frame, (#FCFDock_GetChatFrames(GENERAL_CHAT_DOCK)+1), true);
-         FCF_FadeInChatFrame(FCFDock_GetSelectedWindow(GENERAL_CHAT_DOCK));
-         FCF_DockUpdate();
+   if (canCreateFrame) then
+      local frame, frametab = self:FindChatWindow(name);
+      if ( frame ) then
+         if ( not frametab:IsVisible() ) then
+            -- Dock the frame by default
+            if ( not frame.oldAlpha ) then
+               frame.oldAlpha = frame:GetAlpha() or DEFAULT_CHATFRAME_ALPHA;
+            end
+            FCF_DockFrame(frame, (#FCFDock_GetChatFrames(GENERAL_CHAT_DOCK)+1), true);
+            FCF_FadeInChatFrame(FCFDock_GetSelectedWindow(GENERAL_CHAT_DOCK));
+            FCF_DockUpdate();
+         end
+         return frame, frametab;
+      else
+         local frame = FCF_OpenNewWindow(name);
+         return self:FindChatWindow(name);
       end
-      return frame, frametab;
-   else
-      local frame = FCF_OpenNewWindow(name);
-      return self:FindChatWindow(name);
    end
    -- if we didn't find our frame, something bad has happened, so
    -- let's just use the default chat frame
@@ -715,7 +917,7 @@ local function EnumerateTooltipLines_helper(...)
 end
 
 function FishLib:EnumerateTooltipLines(tooltip)
-    EnumerateTooltipLines_helper(tooltip:GetRegions())
+    return EnumerateTooltipLines_helper(tooltip:GetRegions())
 end
 
 -- Fishing bonus. We used to be able to get the current modifier from
@@ -730,7 +932,10 @@ function FishLib:FishingBonusPoints(item, inv)
          match[1] = "%+(%d+) "..skillname;
          match[2] = skillname.." %+(%d+)";
          -- Equip: Fishing skill increased by N.
-         match[3] = skillname.."[%a%s]+(%d+)%.?$";
+         match[3] = skillname.."[%a%s]+(%d+)%.";
+         if ( GetLocale() == "deDE" ) then
+             match[4] = "+(%d+) Angelfertigkeit";
+         end
       end
       local tooltip = self:GetFishTooltip();
       tooltip:ClearLines();
@@ -757,16 +962,6 @@ function FishLib:FishingBonusPoints(item, inv)
    return points;
 end
 
-function FishLib:GetOutfitBonus()
-   local bonus = 0;
-   -- we can skip the ammo and ranged slots
-   for i=1,16,1 do
-      bonus = bonus + self:FishingBonusPoints(slotinfo[i].id, 1);
-   end
-   local pole, lure = self:GetPoleBonus();
-   return bonus + pole, lure;
-end
-
 -- if we have a fishing pole, return the bonus from the pole
 -- and the bonus from a lure, if any, separately
 function FishLib:GetPoleBonus()
@@ -777,9 +972,9 @@ function FishLib:GetPoleBonus()
       if ( hmhe ) then
          -- IsFishingPole has set mainhand for us
          local itemLink = GetInventoryItemLink("player", mainhand);
-         local _, id, _ = self:SplitFishLink(itemLink);
+         local _, id, _, enchant = self:SplitLink(itemLink);
          -- get the raw value of the pole without any temp enchants
-         local pole = self:FishingBonusPoints("item:"..id);
+         local pole = self:FishingBonusPoints(id);
          return total, total - pole;
       else
          -- no enchant, all pole
@@ -789,125 +984,46 @@ function FishLib:GetPoleBonus()
    return 0, 0;
 end
 
--- Lure library
-local FISHINGLURES = {
-   {  ["id"] = 34832,
-      ["n"] = "Captain Rumsey's Lager",           -- 25 for 10 mins
-      ["b"] = 10,
-      ["s"] = 1,
-      ["d"] = 3,
-      ["u"] = 1,
-   },
-   {  ["id"] = 6529,
-      ["n"] = "Shiny Bauble",                     -- 25 for 10 mins
-      ["b"] = 25,
-      ["s"] = 1,
-      ["d"] = 10,
-   },
-   {  ["id"] = 6811,
-      ["n"] = "Aquadynamic Fish Lens",            -- 50 for 10 mins
-      ["b"] = 50,
-      ["s"] = 50,
-      ["d"] = 10,
-   },
-   {  ["id"] = 6530,
-      ["n"] = "Nightcrawlers",                    -- 50 for 10 mins
-      ["b"] = 50,
-      ["s"] = 50,
-      ["d"] = 10,
-   },
-   {  ["id"] = 33820,
-      ["n"] = "Weather-Beaten Fishing Hat",       -- 75 for 10 minutes
-      ["b"] = 75,
-      ["s"] = 1,
-      ["d"] = 10,
-      ["w"] = true,
-   },
-   {  ["id"] = 7307,
-      ["n"] = "Flesh Eating Worm",                -- 75 for 10 mins
-      ["b"] = 75,
-      ["s"] = 100,
-      ["d"] = 10,
-   },
-   {  ["id"] = 6532,
-      ["n"] = "Bright Baubles",                   -- 75 for 10 mins
-      ["b"] = 75,
-      ["s"] = 100,
-      ["d"] = 10,
-   },
-   {  ["id"] = 34861,
-      ["n"] = "Sharpened Fish Hook",              -- 100 for 10 minutes
-      ["b"] = 100,
-      ["s"] = 100,
-      ["d"] = 10,
-   },
-   {  ["id"] = 6533,
-      ["n"] = "Aquadynamic Fish Attractor",       -- 100 for 10 minutes
-      ["b"] = 100,
-      ["s"] = 100,
-      ["d"] = 10,
-   },
-   {  ["id"] = 62673,
-      ["n"] = "Feathered Lure",      		 	  -- 100 for 60 minutes
-      ["b"] = 100,
-      ["s"] = 100,
-      ["d"] = 10,
-   },
-   {  ["id"] = 46006,
-      ["n"] = "Glow Worm",       		 		  -- 100 for 60 minutes
-      ["b"] = 100,
-      ["s"] = 100,
-      ["d"] = 60,
-   },
-}
-
--- sort ascending bonus and ascending time
-table.sort(FISHINGLURES,
-   function(a,b)
-      if ( a.b == b.b ) then
-         return a.d < b.d;
-      else
-         return a.b < b.b;
-      end
-   end);
-
-function FishLib:GetLureTable()
-   return FISHINGLURES;
+function FishLib:GetOutfitBonus()
+   local bonus = 0;
+   -- we can skip the ammo and ranged slots
+   for i=1,16,1 do
+      bonus = bonus + self:FishingBonusPoints(slotinfo[i].id, 1);
+   end
+   local pole, lure = self:GetPoleBonus();
+   return bonus + pole, lure;
 end
 
-local useinventory = {};
-local lureinventory = {};
-function FishLib:UpdateLureInventory()
-   local rawskill, mods, _, _ = self:GetCurrentSkill();
+-- Is this item openable?
+function FishLib:IsOpenable(item)
+   local _, id, _ = self:SplitFishLink(item);
+   if (not id) then
+      item = "item:"..item;
+   end
 
-   useinventory  = {};
-   lureinventory  = {};
-   for _,lure in ipairs(FISHINGLURES) do
-      local id = lure.id;
-      local count = GetItemCount(id);
-      -- does this lure have to be "worn"
-      if ( count > 0 ) then
-         if ( lure.u ) then
-            tinsert(useinventory, lure);
-         elseif ( lure.s <= rawskill ) then
-            if ( not lure.w or self:IsWorn(id)) then
-               tinsert(lureinventory, lure);
-            end
-         end
-         -- get the name so we can check enchants
-         lure.n,_,_,_,_,_,_,_,_,_ = GetItemInfo(id);
+   local canopen = false;
+   local locked = false;
+   local tooltip = self:GetFishTooltip();
+   tooltip:ClearLines();
+   tooltip:SetHyperlink(item);
+   local lines = EnumerateTooltipLines_helper(tooltip:GetRegions())
+   for i=1,#lines do
+      local line = lines[i];
+      if ( line == _G.ITEM_OPENABLE ) then
+         openable = true;
+      elseif ( line == _G.LOCKED ) then
+         locked = true;
       end
    end
-   return lureinventory, useinventory;
- end
-
-function FishLib:GetLureInventory()
-   return lureinventory, useinventory;
+   return canopen, locked;
 end
 
 function FishLib:HasBuff(buffName)
-    local name, _, _, _, _, _, _, _, _ = UnitBuff("player", buffName);
-    return name ~= nil;
+	if ( buffName ) then
+	    local name, _, _, _, _, _, _, _, _ = UnitBuff("player", buffName);    
+	    return name ~= nil;
+	end
+	-- return nil
 end
 
 function FishLib:FindNextLure(b, state)
@@ -929,10 +1045,11 @@ end
 function FishLib:FindBestLure(b, state, usedrinks)
    local zone, subzone = self:GetZoneInfo();
    local level = LT:GetFishingLevel(zone);
-   if ( level ) then
+   if ( level and level > 1 ) then
       local rank, modifier, skillmax, enchant = self:GetCurrentSkill();
       local skill = rank + modifier;
-      level = level + 95;		-- for no lost fish
+      -- don't need this now, LT has the full values
+      -- level = level + 95;		-- for no lost fish
       if ( skill < level ) then
          -- if drinking will work, then we're done
          if ( usedrinks and #useinventory > 0 ) then
