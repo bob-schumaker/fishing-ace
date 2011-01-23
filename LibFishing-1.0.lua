@@ -7,7 +7,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 90000 + tonumber(("$Rev: 411 $"):match("%d+"))
+local MINOR_VERSION = 90000 + tonumber(("$Rev: 414 $"):match("%d+"))
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -229,7 +229,6 @@ local function UseThisLure(lure, b, enchant, skill, level)
 		-- skill = skill or 0;
 		level = level or 0;
 		local bonus = lure.b;
-FishingBuddy.Debug("UseThisLure bonus %d b %d enchant %d skill %d level %d", bonus, b or -1, enchant or -1, skill or -1, level);
 		if ( startTime == 0 and (skill and level <= (skill + bonus)) and (bonus > enchant) ) then
 			if ( not b or bonus > b ) then 
 				return true, bonus;
