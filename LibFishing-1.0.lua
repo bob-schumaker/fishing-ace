@@ -7,7 +7,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 90000 + tonumber(("$Rev: 414 $"):match("%d+"))
+local MINOR_VERSION = 90000 + tonumber(("$Rev: 417 $"):match("%d+"))
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -272,7 +272,7 @@ function FishLib:FindBestLure(b, state, usedrinks)
 			end
 
 			-- if we ran off the end of the table and we had a valid lure, let's use that one
-			if ( (not enchant or enchant == 0) and checklure ) then
+			if ( (not enchant or enchant == 0) and (b > 0) and checklure ) then
 				return #lureinventory, checklure;
 			end
 		end
