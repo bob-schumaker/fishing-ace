@@ -7,7 +7,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 90000 + tonumber(("$Rev: 417 $"):match("%d+"))
+local MINOR_VERSION = 90000 + tonumber(("$Rev: 437 $"):match("%d+"))
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -262,7 +262,7 @@ function FishLib:FindBestLure(b, state, usedrinks)
 			skill = skill - enchant;
 			state = state or 0;
 			local checklure;
-			local useit, b;
+			local useit, b = 0;
 			for s=state+1,#lureinventory,1 do
 				checklure = lureinventory[s];
 				useit, b = UseThisLure(checklure, b, enchant, skill, level);
