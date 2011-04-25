@@ -7,7 +7,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 90000 + tonumber(("$Rev: 437 $"):match("%d+"))
+local MINOR_VERSION = 90000 + tonumber(("$Rev: 454 $"):match("%d+"))
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -131,10 +131,16 @@ local FISHINGLURES = {
 		["d"] = 60,
 	},
 	{	["id"] = 68049,
-		["n"] = "Heat-Treated Spinning Lure",		  -- 100 for 5 minutes
+		["n"] = "Heat-Treated Spinning Lure",		  -- 150 for 5 minutes
 		["b"] = 150,
 		["s"] = 250,
 		["d"] = 5,
+	},
+	{	["id"] = 67404,
+		["n"] = "Glass Fishing Bobber",				  -- ???
+		["b"] = 15,
+		["s"] = 1,
+		["d"] = 10,
 	},
 }
 
@@ -228,7 +234,7 @@ local function UseThisLure(lure, b, enchant, skill, level)
 		-- already check for skill being nil, so that will skip the whole check with level
 		-- skill = skill or 0;
 		level = level or 0;
-		local bonus = lure.b;
+		local bonus = lure.b or 0;
 		if ( startTime == 0 and (skill and level <= (skill + bonus)) and (bonus > enchant) ) then
 			if ( not b or bonus > b ) then 
 				return true, bonus;
@@ -266,7 +272,7 @@ function FishLib:FindBestLure(b, state, usedrinks)
 			for s=state+1,#lureinventory,1 do
 				checklure = lureinventory[s];
 				useit, b = UseThisLure(checklure, b, enchant, skill, level);
-				if ( useit ) then
+				if ( useit and b > 0 ) then
 					return s, checklure;
 				end
 			end
@@ -744,8 +750,6 @@ tinsert(skilltable, { ["level"] = 215, ["inc"] = 5 });
 tinsert(skilltable, { ["level"] = 235, ["inc"] = 6 });
 tinsert(skilltable, { ["level"] = 260, ["inc"] = 7 });
 tinsert(skilltable, { ["level"] = 280, ["inc"] = 8 });
-tinsert(skilltable, { ["level"] = 295, ["inc"] = 9 });
-tinsert(skilltable, { ["level"] = 300, ["inc"] = 12 });
 tinsert(skilltable, { ["level"] = 325, ["inc"] = 9 });
 tinsert(skilltable, { ["level"] = 365, ["inc"] = 10 });
 tinsert(skilltable, { ["level"] = 450, ["inc"] = 11 });
