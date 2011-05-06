@@ -7,7 +7,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 90000 + tonumber(("$Rev: 454 $"):match("%d+"))
+local MINOR_VERSION = 90000 + tonumber(("$Rev: 472 $"):match("%d+"))
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -63,7 +63,7 @@ FishLib.GetCurrentSkill = GetCurrentSkill;
 -- Lure library
 local FISHINGLURES = {
 	{	["id"] = 34832,
-		["n"] = "Captain Rumsey's Lager",			  -- 25 for 10 mins
+		["n"] = "Captain Rumsey's Lager",			     -- 10 for 3 mins
 		["b"] = 10,
 		["s"] = 1,
 		["d"] = 3,
@@ -272,13 +272,13 @@ function FishLib:FindBestLure(b, state, usedrinks)
 			for s=state+1,#lureinventory,1 do
 				checklure = lureinventory[s];
 				useit, b = UseThisLure(checklure, b, enchant, skill, level);
-				if ( useit and b > 0 ) then
+				if ( useit and b and b > 0 ) then
 					return s, checklure;
 				end
 			end
 
 			-- if we ran off the end of the table and we had a valid lure, let's use that one
-			if ( (not enchant or enchant == 0) and (b > 0) and checklure ) then
+			if ( (not enchant or enchant == 0) and b and (b > 0) and checklure ) then
 				return #lureinventory, checklure;
 			end
 		end
@@ -541,7 +541,7 @@ function FishLib:GetPoleType()
 			_,_,_,_,fp_itemtype,fp_subtype,_,_,_,_ = self:GetItemInfo(6256);
 		end
 	end
-	return fp_itemtype, fp_subtupe;
+	return fp_itemtype, fp_subtype;
 end
 
 function FishLib:IsFishingPool(text)
@@ -787,7 +787,7 @@ end
 -- we should have some way to believe 
 function FishLib:SetCaughtSoFar(value)
 	if ( FishingBuddy and FishingBuddy.GetSetting ) then
-		caughtSoFar = FishingBuddy.GetSetting("CaughtSoFar");
+		caughtSoFar = FishingBuddy.GetSetting("CaughtSoFar") or 0;
 	else
 		caughtSoFar = value;
 	end
