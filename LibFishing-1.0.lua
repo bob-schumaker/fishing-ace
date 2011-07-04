@@ -7,7 +7,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 90000 + tonumber(("$Rev: 472 $"):match("%d+"))
+local MINOR_VERSION = 90000 + tonumber(("$Rev: 477 $"):match("%d+"))
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -698,6 +698,12 @@ function FishLib:GetZoneInfo()
 	if ( not subzone or subzone == "" ) then
 		subzone = zone;
 	end
+
+	-- Hack to fix issues with 4.1 and LibBabbleZone and LibTourist
+	if (zone == "City of Ironforge" ) then
+		zone = "Ironforge";
+	end
+	
 	return zone, subzone;
 end
 

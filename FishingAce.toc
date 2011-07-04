@@ -1,6 +1,6 @@
-## Interface: 40100
+## Interface: 40200
 ## Title: Fishing Ace! |cff7fff7f -Ace3-|r
-## Version: 0.5.5l
+## Version: 0.5.5m
 ## Notes: Simple right click casting.
 ## Title-zhCN: |cff7fff7f-Ace3-|r Fishing Ace!
 ## Notes-zhCN: 右键钓鱼
