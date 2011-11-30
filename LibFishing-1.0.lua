@@ -7,7 +7,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 90000 + tonumber(("$Rev: 477 $"):match("%d+"))
+local MINOR_VERSION = 90000 + tonumber(("$Rev: 503 $"):match("%d+"))
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -17,7 +17,15 @@ if not FishLib then
 end
 
 local Crayon = LibStub("LibCrayon-3.0");
+local BL = LibStub("LibBabble-Zone-3.0"):GetBaseLookupTable();
+local BZ = LibStub("LibBabble-Zone-3.0"):GetLookupTable()
+local BZR = LibStub("LibBabble-Zone-3.0"):GetReverseLookupTable();
 local LT = LibStub("LibTourist-3.0");
+local BSL = LibStub("LibBabble-SubZone-3.0"):GetBaseLookupTable();
+local BSZ = LibStub("LibBabble-SubZone-3.0"):GetLookupTable();
+local BSZR = LibStub("LibBabble-SubZone-3.0"):GetReverseLookupTable();
+
+FishLib.UNKNOWN = "UNKNOWN";
 
 local WOW = {};
 function FishLib:WOWVersion()
@@ -247,7 +255,7 @@ end
 
 function FishLib:FindBestLure(b, state, usedrinks)
 	local zone, subzone = self:GetZoneInfo();
-	local level = LT:GetFishingLevel(zone);
+	local level = self:GetFishingLevel(zone, subzone);
 	if ( level and level > 1 ) then
 		local rank, modifier, skillmax, enchant = self:GetCurrentSkill();
 		local skill = rank + modifier;
@@ -707,6 +715,99 @@ function FishLib:GetZoneInfo()
 	return zone, subzone;
 end
 
+-- translate zones and subzones
+-- need to handle the fact that French uses "Stormwind" instead of "Stormwind City"
+function FishLib:GetBaseZone(zname)
+	if ( zname == FishLib.UNKNOWN or zname == UNKNOWN ) then
+		return FishLib.UNKNOWN;
+	end
+	
+	if (zname and not BL[zname] ) then
+		zname = BZR[zname];
+	end
+	if (not zname) then
+		zname = FishLib.UNKNOWN;
+	end
+	return zname;
+end
+
+function FishLib:GetBaseSubZone(sname)
+	if ( sname == FishLib.UNKNOWN or sname == UNKNOWN ) then
+		return FishLib.UNKNOWN;
+	end
+	
+	if (sname and not BSL[sname] ) then
+		sname = BSZR[sname];
+	end
+	if (not sname) then
+		sname = FishLib.UNKNOWN;
+	end
+	return sname;
+end
+
+function FishLib:GetLocZone(zname)
+	if ( zname == FishLib.UNKNOWN or zname == UNKNOWN ) then
+		return UNKNOWN;
+	end
+
+	if (zname and BL[zname]) then
+		zname = BZ[zname];
+	end
+	if (not zname) then
+		zname = FishLib.UNKNOWN;
+	end
+	return zname;
+end
+
+function FishLib:GetLocSubZone(sname)
+	if ( sname == FishLib.UNKNOWN or sname == UNKNOWN ) then
+		return UNKNOWN;
+	end
+
+	if (sname and BSL[sname] ) then
+		sname = BSZ[sname];
+	end
+	if (not sname) then
+		sname = FishLib.UNKNOWN;
+	end
+	return sname;
+end
+
+local subzoneskills = {
+	["Jademir Lake"] = 425,
+	["Verdantis River"] = 300,
+	["The Forbidding Sea"] = 225,
+	["Ruins of Arkkoran"] = 300,
+	["The Tainted Forest"] = 25,
+	["Ruins of Gilneas"] = 75,
+	["The Throne of Flame"] = 1,
+	["Forge Camp: Hate"] = 375,	-- Nagrand
+	["Lake Sunspring"] = 490,	-- Nagrand
+	["Skysong Lake"] = 490,	-- Nagrand
+	["Oasis"] = 100,
+	["South Seas"] = 300,
+	["Lake Everstill"] = 150,
+	["Blackwind"] = 500,
+	["Ere'Noru"] = 500,
+	["Jorune"] = 500,
+	["Silmyr"] = 500,
+	["Cannon's Inferno"] = 1,
+	["Fire Plume Ridge"] = 1,
+	["Marshlight Lake"] = 450,
+	["Sporewind Lake"] = 450,
+	["Serpent Lake"] = 450,
+};
+
+function FishLib:GetFishingLevel(zone, subzone)
+	subzone = self:GetBaseSubZone(subzone);
+
+	if (subzoneskills[subzone]) then
+		return subzoneskills[subzone];
+	else
+		return LT:GetFishingLevel(zone);
+	end
+end
+
 -- return a nicely formatted line about the local zone skill and yours
 function FishLib:GetFishingSkillLine(join, withzone)
 	local part1 = "";
@@ -714,7 +815,7 @@ function FishLib:GetFishingSkillLine(join, withzone)
 	local skill, mods, skillmax = self:GetCurrentSkill();
 	local totskill = skill + mods;
 	local zone, subzone = self:GetZoneInfo();
-	local level = LT:GetFishingLevel(zone);
+	local level = self:GetFishingLevel(zone, subzone);
 	if ( withzone ) then
 		part1 = zone.." : "..subzone.. " ";
 	end
@@ -762,6 +863,15 @@ tinsert(skilltable, { ["level"] = 450, ["inc"] = 11 });
 tinsert(skilltable, { ["level"] = 500, ["inc"] = 9 });
 tinsert(skilltable, { ["level"] = 525, ["inc"] = 10 });
 
+local newskilluptable = {};
+function FishLib:SetSkillupTable(table)
+	newskilluptable = table;
+end
+
+function FishLib:GetSkillupTable()
+	return newskilluptable;
+end
+
 -- this would be faster as a binary search, but I'm not sure it matters :-)
 function FishLib:CatchesAtSkill(skill)
 	for _,chk in ipairs(skilltable) do
@@ -775,11 +885,14 @@ end
 function FishLib:GetSkillUpInfo(lastSkillCheck)
 	local skill, mods, skillmax = self:GetCurrentSkill();
 	if ( skillmax and skill < skillmax ) then
-		-- guess high instead of low on how many more we need
 		local needed = self:CatchesAtSkill(skill);
 		if ( needed ) then
 			if ( not lastSkillCheck or lastSkillCheck ~= skill ) then
 				if ( lastSkillCheck ) then
+					if (not newskilluptable[lastSkillCheck]) then
+						newskilluptable[lastSkillCheck] = {};
+						tinsert(newskilluptable[lastSkillCheck], caughtsofar);
+					end
 					caughtSoFar = 0;
 				end
 				lastSkillCheck = skill;
