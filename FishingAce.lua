@@ -208,7 +208,6 @@ end
 
 local function HijackCheck()
 	if ( not InCombatLockdown() and FL:IsFishingPole() ) then
-FishingBuddy.Debug("FA NormalHijackCheck true");
 		return true
 	end
 end
@@ -318,7 +317,6 @@ local function WF_OnMouseDown(...)
 	local button = select(2, ...)
 	if ( button == "RightButton" and HijackCheck() ) then
 		if ( FL:CheckForDoubleClick() ) then
-FishingBuddy.Debug("FA FL:CheckForDoubleClick() true");
 			overrideOn = true
 			-- We're stealing the mouse-up event, make sure we exit MouseLook
 			if ( IsMouselooking() ) then

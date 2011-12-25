@@ -7,7 +7,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 90000 + tonumber(("$Rev: 529 $"):match("%d+"))
+local MINOR_VERSION = 90000 + tonumber(("$Rev: 531 $"):match("%d+"))
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -299,7 +299,7 @@ end
 
 -- Handle events we care about
 local canCreateFrame = false;
-local isLooting = false;
+local isLooting = 0;
 local countCatches = false;
 local caughtSoFar = 0;
 
@@ -317,9 +317,10 @@ libfishframe:SetScript("OnEvent", function(self, event, ...)
 		self:UnregisterEvent(event);
 	elseif ( event == "SKILL_LINES_CHANGED" or event == "UNIT_INVENTORY_CHANGED") then
 		UpdateLureInventory();
+		isLooting = 0;
 	elseif (event == "LOOT_OPENED") then
 		if ( IsFishingLoot() ) then
-			isLooting = true;
+			isLooting = isLooting + 1;
 			countCatches = true;
 		end
 	elseif ( event == "LOOT_SLOT_CLEARED" ) then
@@ -329,10 +330,11 @@ libfishframe:SetScript("OnEvent", function(self, event, ...)
 			countCatches = false;
 		end
 	elseif ( event == "LOOT_CLOSED" ) then
-		isLooting = false;
+		isLooting = isLooting - 1;
 		countCatches = false;
 	end
 end);
+libfishframe:Show();
 
 local bobber = {};
 bobber["enUS"] = "Fishing Bobber";
@@ -674,7 +676,7 @@ end
 
 -- look for double clicks
 function FishLib:CheckForDoubleClick()
-	if ( not isLooting and self.lastClickTime ) then
+	if ( (isLooting == 0) and self.lastClickTime ) then
 		local pressTime = GetTime();
 		local doubleTime = pressTime - self.lastClickTime;
 		if ( (doubleTime < ACTIONDOUBLEWAIT) and (doubleTime > MINACTIONDOUBLECLICK) ) then
