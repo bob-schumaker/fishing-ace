@@ -22,4 +22,5 @@ if L then
 	L["LureSkill"] = "Use: When applied to your fishing pole, increases Fishing by (%d) for %d minutes."
 	
 	L["FishingAce is active, easy cast disabled."] = true
+	L["FishingAce on standby, easy cast enabled."] = true
 end

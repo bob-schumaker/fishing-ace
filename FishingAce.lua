@@ -73,7 +73,6 @@ local FISHINGLURES = {
 local AddingLure = false
 
 local overrideOn = false
-FishingAceButton = nil
 
 local function ResetFAButton()
 	if (overrideOn) then
@@ -209,6 +208,7 @@ end
 
 local function HijackCheck()
 	if ( not InCombatLockdown() and FL:IsFishingPole() ) then
+FishingBuddy.Debug("FA NormalHijackCheck true");
 		return true
 	end
 end
@@ -299,7 +299,7 @@ local function SetupLure()
             local pole, tempenchant = FL:GetPoleBonus()
             local state, bestlure = FL:FindBestLure(tempenchant, 0)
 			if ( state and bestlure ) then
-			   FL:InvokeLuring(bestlure.id)
+			   FL:InvokeLuring(bestlure.id, FishingAceButton)
 			   AddingLure = true
 			   LastLure = bestlure.n
 			   return true
@@ -318,15 +318,16 @@ local function WF_OnMouseDown(...)
 	local button = select(2, ...)
 	if ( button == "RightButton" and HijackCheck() ) then
 		if ( FL:CheckForDoubleClick() ) then
+FishingBuddy.Debug("FA FL:CheckForDoubleClick() true");
+			overrideOn = true
 			-- We're stealing the mouse-up event, make sure we exit MouseLook
 			if ( IsMouselooking() ) then
 				MouselookStop()
 			end
 			if ( not SetupLure() ) then
-				FL:InvokeFishing(FishingAce.db.profile.action)
+				FL:InvokeFishing(FishingAce.db.profile.action, FishingAceButton)
 			end
-			FL:OverrideClick()
-			overrideOn = true
+			FL:OverrideClick(FishingAceButton)
 		end
 	end
 end
@@ -355,7 +356,7 @@ function FishingAce:OnDisable()
 	end
 	ResetFAButton()
 	if ( FishingBuddy and FishingBuddy.Message ) then
-         FishingBuddy.Message(L["FishingAce on standby, easy cast enabled"]);
+         FishingBuddy.Message(L["FishingAce on standby, easy cast enabled."]);
 	end
 end
 

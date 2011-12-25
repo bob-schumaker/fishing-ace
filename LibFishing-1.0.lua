@@ -7,7 +7,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 90000 + tonumber(("$Rev: 503 $"):match("%d+"))
+local MINOR_VERSION = 90000 + tonumber(("$Rev: 529 $"):match("%d+"))
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -796,6 +796,10 @@ local subzoneskills = {
 	["Marshlight Lake"] = 450,
 	["Sporewind Lake"] = 450,
 	["Serpent Lake"] = 450,
+	-- Until we get an updated LibTourist
+	["Darkmoon Boardwalk"] = 75,
+	["Darkmoon Island"] = 75,
+	["The Great Sea"] = 75,
 };
 
 function FishLib:GetFishingLevel(zone, subzone)
@@ -1058,13 +1062,10 @@ function FishLib:CreateSAButton(name, postclick)
 	btn:Hide();
 	btn.name = name;
 
-	self.sabutton = btn;
-
 	return btn;
 end
 
 function FishLib:InvokeFishing(useaction, btn)
-	btn = btn or self.sabutton;
 	if ( not btn ) then
 		return;
 	end
@@ -1084,7 +1085,6 @@ function FishLib:InvokeFishing(useaction, btn)
 end
 
 function FishLib:InvokeLuring(id, btn)
-	btn = btn or self.sabutton;
 	if ( not btn ) then
 		return;
 	end
@@ -1096,8 +1096,7 @@ function FishLib:InvokeLuring(id, btn)
 end
 
 function FishLib:OverrideClick(btn)
-	btn = btn or self.sabutton;
-	if ( not self.sabutton ) then
+	if ( not btn ) then
 		return;
 	end
 	SetOverrideBindingClick(btn, true, "BUTTON2", btn.name);
