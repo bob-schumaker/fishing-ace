@@ -7,7 +7,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 90000 + tonumber(("$Rev: 539 $"):match("%d+"))
+local MINOR_VERSION = 90000 + tonumber(("$Rev: 542 $"):match("%d+"))
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -846,19 +846,11 @@ end
 -- table taken from El's Anglin' pages
 -- More accurate than the previous (skill - 75) / 25 calculation now
 local skilltable = {};
-tinsert(skilltable, { ["level"] = 115, ["inc"] = 1 });
-tinsert(skilltable, { ["level"] = 150, ["inc"] = 2 });
-tinsert(skilltable, { ["level"] = 170, ["inc"] = 3 });
-tinsert(skilltable, { ["level"] = 190, ["inc"] = 4 });
-tinsert(skilltable, { ["level"] = 215, ["inc"] = 5 });
-tinsert(skilltable, { ["level"] = 235, ["inc"] = 6 });
-tinsert(skilltable, { ["level"] = 260, ["inc"] = 7 });
-tinsert(skilltable, { ["level"] = 280, ["inc"] = 8 });
-tinsert(skilltable, { ["level"] = 325, ["inc"] = 9 });
-tinsert(skilltable, { ["level"] = 365, ["inc"] = 10 });
-tinsert(skilltable, { ["level"] = 450, ["inc"] = 11 });
-tinsert(skilltable, { ["level"] = 500, ["inc"] = 9 });
-tinsert(skilltable, { ["level"] = 525, ["inc"] = 10 });
+tinsert(skilltable, { ["level"] = 100, ["inc"] = 1 });
+tinsert(skilltable, { ["level"] = 200, ["inc"] = 2 });
+tinsert(skilltable, { ["level"] = 300, ["inc"] = 2 });
+tinsert(skilltable, { ["level"] = 450, ["inc"] = 4 });
+tinsert(skilltable, { ["level"] = 525, ["inc"] = 6 });
 
 local newskilluptable = {};
 function FishLib:SetSkillupTable(table)
