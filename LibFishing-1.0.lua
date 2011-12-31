@@ -7,7 +7,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 90000 + tonumber(("$Rev: 531 $"):match("%d+"))
+local MINOR_VERSION = 90000 + tonumber(("$Rev: 539 $"):match("%d+"))
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -182,11 +182,11 @@ end
 
 local useinventory = {};
 local lureinventory = {};
-function UpdateLureInventory()
+function FishLib:UpdateLureInventory()
 	local rawskill, _, _, _ = GetCurrentSkill();
 
-	useinventory  = {};
-	lureinventory	= {};
+	useinventory = {};
+	lureinventory = {};
 	for _,lure in ipairs(FISHINGLURES) do
 		local id = lure.id;
 		local count = GetItemCount(id);
@@ -205,7 +205,6 @@ function UpdateLureInventory()
 	end
 	return lureinventory, useinventory;
  end
-FishLib.UpdateLureInventory = UpdateLureInventory;
 
 function FishLib:GetLureInventory()
 	return lureinventory, useinventory;
@@ -261,6 +260,7 @@ function FishLib:FindBestLure(b, state, usedrinks)
 		local skill = rank + modifier;
 		-- don't need this now, LT has the full values
 		-- level = level + 95;		-- for no lost fish
+		self:UpdateLureInventory();
 		if ( skill < level ) then
 			-- if drinking will work, then we're done
 			if ( usedrinks and #useinventory > 0 ) then
@@ -300,13 +300,11 @@ end
 -- Handle events we care about
 local canCreateFrame = false;
 local isLooting = 0;
-local countCatches = false;
 local caughtSoFar = 0;
 
 local libfishframe = CreateFrame("Frame");
 libfishframe:RegisterEvent("UPDATE_CHAT_WINDOWS");
 libfishframe:RegisterEvent("LOOT_OPENED");
-libfishframe:RegisterEvent("LOOT_SLOT_CLEARED");
 libfishframe:RegisterEvent("LOOT_CLOSED");
 libfishframe:RegisterEvent("SKILL_LINES_CHANGED");
 libfishframe:RegisterEvent("UNIT_INVENTORY_CHANGED");
@@ -316,22 +314,15 @@ libfishframe:SetScript("OnEvent", function(self, event, ...)
 		canCreateFrame = true;
 		self:UnregisterEvent(event);
 	elseif ( event == "SKILL_LINES_CHANGED" or event == "UNIT_INVENTORY_CHANGED") then
-		UpdateLureInventory();
+		FishLib:UpdateLureInventory();
 		isLooting = 0;
 	elseif (event == "LOOT_OPENED") then
 		if ( IsFishingLoot() ) then
 			isLooting = isLooting + 1;
-			countCatches = true;
-		end
-	elseif ( event == "LOOT_SLOT_CLEARED" ) then
-		if ( countCatches ) then
-			caughtSoFar = caughtSoFar + 1;
-			-- it only counts as one "catch", regardless of how many things we actually got
-			countCatches = false;
 		end
 	elseif ( event == "LOOT_CLOSED" ) then
 		isLooting = isLooting - 1;
-		countCatches = false;
+		caughtSoFar = caughtSoFar + 1;
 	end
 end);
 libfishframe:Show();
