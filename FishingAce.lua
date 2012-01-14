@@ -72,16 +72,6 @@ local FISHINGLURES = {
 
 local AddingLure = false
 
-local overrideOn = false
-
-local function ResetFAButton()
-	if (overrideOn) then
-		overrideOn = false
-		ClearOverrideBindings(FishingAceButton)
-		FishingAceButton:Hide()
-	end
-end
-
 function FAOptions(uiType, uiName)
 	local options = {
 		type='group',
@@ -170,11 +160,8 @@ function FishingAce:PostCastUpdate(self)
 end
 
 local function HideAwayAll(self, button, down)
-	if ( overrideOn ) then
-		ResetFAButton()
-		if ( not casting_timer ) then
-			casting_timer = FishingAce:ScheduleRepeatingTimer("PostCastUpdate", 1, self)
-		end
+	if ( not casting_timer ) then
+		casting_timer = FishingAce:ScheduleRepeatingTimer("PostCastUpdate", 1, self)
 	end
 end
 
@@ -202,7 +189,7 @@ function FishingAce:OnInitialize()
 	config:CreateChatCommand("fishingace", ADDONNAME)
 	config:CreateChatCommand("fa", ADDONNAME)
 
-    FL:CreateSAButton("FishingAceButton", HideAwayAll)
+    FL:CreateSAButton()
     FL:WatchBobber(false)
 end
 
@@ -298,7 +285,7 @@ local function SetupLure()
             local pole, tempenchant = FL:GetPoleBonus()
             local state, bestlure = FL:FindBestLure(tempenchant, 0)
 			if ( state and bestlure ) then
-			   FL:InvokeLuring(bestlure.id, FishingAceButton)
+			   FL:InvokeLuring(bestlure.id)
 			   AddingLure = true
 			   LastLure = bestlure.n
 			   return true
@@ -317,15 +304,14 @@ local function WF_OnMouseDown(...)
 	local button = select(2, ...)
 	if ( button == "RightButton" and HijackCheck() ) then
 		if ( FL:CheckForDoubleClick() ) then
-			overrideOn = true
 			-- We're stealing the mouse-up event, make sure we exit MouseLook
 			if ( IsMouselooking() ) then
 				MouselookStop()
 			end
 			if ( not SetupLure() ) then
-				FL:InvokeFishing(FishingAce.db.profile.action, FishingAceButton)
+				FL:InvokeFishing(FishingAce.db.profile.action)
 			end
-			FL:OverrideClick(FishingAceButton)
+			FL:OverrideClick(HideAwayAll)
 		end
 	end
 end

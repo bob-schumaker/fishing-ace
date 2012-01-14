@@ -7,7 +7,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 90000 + tonumber(("$Rev: 542 $"):match("%d+"))
+local MINOR_VERSION = 90000 + tonumber(("$Rev: 551 $"):match("%d+"))
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -308,12 +308,16 @@ libfishframe:RegisterEvent("LOOT_OPENED");
 libfishframe:RegisterEvent("LOOT_CLOSED");
 libfishframe:RegisterEvent("SKILL_LINES_CHANGED");
 libfishframe:RegisterEvent("UNIT_INVENTORY_CHANGED");
+libfishframe:RegisterEvent("UNIT_SPELLCAST_CHANNEL_START");
+libfishframe:RegisterEvent("UNIT_SPELLCAST_CHANNEL_STOP");
 
 libfishframe:SetScript("OnEvent", function(self, event, ...)
+	local arg1 = select(1, ...);
 	if ( event == "UPDATE_CHAT_WINDOWS" ) then
 		canCreateFrame = true;
 		self:UnregisterEvent(event);
-	elseif ( event == "SKILL_LINES_CHANGED" or event == "UNIT_INVENTORY_CHANGED") then
+	elseif ( event == "SKILL_LINES_CHANGED" or
+		( event == "UNIT_INVENTORY_CHANGED" and arg1 == "player" ) ) then
 		FishLib:UpdateLureInventory();
 		isLooting = 0;
 	elseif (event == "LOOT_OPENED") then
@@ -323,7 +327,12 @@ libfishframe:SetScript("OnEvent", function(self, event, ...)
 	elseif ( event == "LOOT_CLOSED" ) then
 		isLooting = isLooting - 1;
 		caughtSoFar = caughtSoFar + 1;
+	elseif ( event == "UNIT_SPELLCAST_CHANNEL_START" or event == "UNIT_SPELLCAST_CHANNEL_STOP" ) then
+		if (arg1 ~= "player" ) then
+			return;
+		end
 	end
+	FishLib:ResetOverride();
 end);
 libfishframe:Show();
 
@@ -925,6 +934,10 @@ function FishLib:GetFishingActionBarID(force)
 	return self.ActionBarID;
 end
 
+function FishLib:ClearFishingActionBarID()
+	self.ActionBarID = nil;
+end
+
 -- handle classes of fish
 local MissedFishItems = {};
 MissedFishItems[45190] = "Driftwood";
@@ -1037,20 +1050,43 @@ function FishLib:GetChatWindow(name)
 end
 
 -- Secure action button
-function FishLib:CreateSAButton(name, postclick)
-	local btn = CreateFrame("Button", name, UIParent, "SecureActionButtonTemplate");
-	btn:SetPoint("LEFT", UIParent, "RIGHT", 10000, 0);
-	btn:SetFrameStrata("LOW");
-	btn:EnableMouse(true);
-	btn:RegisterForClicks("RightButtonUp");
-	btn:SetScript("PostClick", postclick);
-	btn:Hide();
-	btn.name = name;
+local SABUTTONNAME = "LibFishingSAButton";
 
-	return btn;
+function FishLib:ResetOverride()
+	if ( self.OverrideOn) then
+		local btn = self.sabutton;
+		if ( btn ) then
+			btn:Hide();
+			ClearOverrideBindings(btn);
+		end
+		self.OverrideOn = false;
+	end
 end
 
-function FishLib:InvokeFishing(useaction, btn)
+local function ClickHandled(button)
+	button.fl:ResetOverride();
+	if ( button.postclick ) then
+		button.postclick();
+	end
+end
+
+function FishLib:CreateSAButton()
+	local btn = getglobal(SABUTTONNAME);
+	if ( not btn ) then
+		btn = CreateFrame("Button", SABUTTONNAME, UIParent, "SecureActionButtonTemplate");
+		btn:SetPoint("LEFT", UIParent, "RIGHT", 10000, 0);
+		btn:SetFrameStrata("LOW");
+		btn:EnableMouse(true);
+		btn:RegisterForClicks("RightButtonUp");
+		btn:SetScript("PostClick", ClickHandled);
+		btn:Hide();
+	end
+	self.sabutton = btn;
+	btn.fl = self;
+end
+
+function FishLib:InvokeFishing(useaction)
+	local btn = self.sabutton;
 	if ( not btn ) then
 		return;
 	end
@@ -1069,7 +1105,8 @@ function FishLib:InvokeFishing(useaction, btn)
 	btn:SetAttribute("target-slot", nil);
 end
 
-function FishLib:InvokeLuring(id, btn)
+function FishLib:InvokeLuring(id)
+	local btn = self.sabutton;
 	if ( not btn ) then
 		return;
 	end
@@ -1078,13 +1115,18 @@ function FishLib:InvokeLuring(id, btn)
 	btn:SetAttribute("target-slot", mainhand);
 	btn:SetAttribute("spell", nil);
 	btn:SetAttribute("action", nil);
+	btn.postclick = postclick;
 end
 
-function FishLib:OverrideClick(btn)
+function FishLib:OverrideClick(postclick)
+	local btn = self.sabutton;
 	if ( not btn ) then
 		return;
 	end
-	SetOverrideBindingClick(btn, true, "BUTTON2", btn.name);
+	self.OverrideOn = true;
+	btn.postclick = postclick;
+	SetOverrideBindingClick(btn, true, "BUTTON2", SABUTTONNAME);
+	btn:Show();
 end
 
 -- Taken from wowwiki tooltip handling suggestions
@@ -1182,7 +1224,7 @@ end
 
 -- return a list of the best items we have for a fishing outfit
 function FishLib:GetFishingOutfitItems(wearing)
-	local ibp = function(link) return FL:FishingBonusPoints(link); end;
+	local ibp = function(link) return self:FishingBonusPoints(link); end;
 	-- find fishing gear
 	-- no affinity, check all bags
 	local outfit = nil;
