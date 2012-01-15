@@ -142,7 +142,7 @@ FishingAce = LibStub("AceAddon-3.0"):NewAddon("FishingAce", "AceConsole-3.0", "A
 local casting_timer = null
 function FishingAce:PostCastUpdate(self)
 	local stop = true
-    ResetFAButton();
+	FL:ResetOverride();
 	if ( not InCombatLockdown() ) then
 		if ( AddingLure ) then
 			local sp, sub, txt, tex, st, et, trade, int = UnitChannelInfo("player");
@@ -338,7 +338,7 @@ function FishingAce:OnDisable()
 	if self:IsHooked(WorldFrame, "OnMouseDown") then
 		self:Unhook(WorldFrame, "OnMouseDown")
 	end
-	ResetFAButton()
+	FL:ResetOverride();
 	if ( FishingBuddy and FishingBuddy.Message ) then
          FishingBuddy.Message(L["FishingAce on standby, easy cast enabled."]);
 	end
@@ -358,11 +358,11 @@ function FishingAce:PLAYER_EQUIPMENT_CHANGED()
 end
 
 function FishingAce:PLAYER_REGEN_DISABLED()
-   ResetFAButton()
+	FL:ResetOverride();
 end
 
 function FishingAce:PLAYER_REGEN_ENABLED()
-   ResetFAButton()
+	FL:ResetOverride();
 end
 
 function FishingAce:PLAYER_ENTERING_WORLD()
