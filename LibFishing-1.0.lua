@@ -7,7 +7,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 90000 + tonumber(("$Rev: 551 $"):match("%d+"))
+local MINOR_VERSION = 90000 + tonumber(("$Rev: 569 $"):match("%d+"))
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -332,7 +332,9 @@ libfishframe:SetScript("OnEvent", function(self, event, ...)
 			return;
 		end
 	end
-	FishLib:ResetOverride();
+	if (libfishframe.fl) then
+		libfishframe.fl:ResetOverride();
+	end
 end);
 libfishframe:Show();
 
@@ -451,6 +453,8 @@ function FishLib:printable(val)
 		return "nil";
 	elseif (type(val) == "boolean") then
 		return val and "true" or "false";
+	elseif (type(val) == "table") then
+		return "table";
 	else
 		return ""..val;
 	end
@@ -1063,10 +1067,11 @@ function FishLib:ResetOverride()
 	end
 end
 
-local function ClickHandled(button)
-	button.fl:ResetOverride();
-	if ( button.postclick ) then
-		button.postclick();
+local function ClickHandled(self)
+	self:Hide();
+	self.fl:ResetOverride();
+	if ( self.postclick ) then
+		self.postclick();
 	end
 end
 
@@ -1123,6 +1128,7 @@ function FishLib:OverrideClick(postclick)
 	if ( not btn ) then
 		return;
 	end
+	libfishframe.fl = self;
 	self.OverrideOn = true;
 	btn.postclick = postclick;
 	SetOverrideBindingClick(btn, true, "BUTTON2", SABUTTONNAME);
