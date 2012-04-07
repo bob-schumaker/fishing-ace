@@ -7,7 +7,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 90000 + tonumber(("$Rev: 569 $"):match("%d+"))
+local MINOR_VERSION = 90000 + tonumber(("$Rev: 576 $"):match("%d+"))
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -802,10 +802,6 @@ local subzoneskills = {
 	["Marshlight Lake"] = 450,
 	["Sporewind Lake"] = 450,
 	["Serpent Lake"] = 450,
-	-- Until we get an updated LibTourist
-	["Darkmoon Boardwalk"] = 75,
-	["Darkmoon Island"] = 75,
-	["The Great Sea"] = 75,
 };
 
 function FishLib:GetFishingLevel(zone, subzone)
@@ -1057,13 +1053,10 @@ end
 local SABUTTONNAME = "LibFishingSAButton";
 
 function FishLib:ResetOverride()
-	if ( self.OverrideOn) then
-		local btn = self.sabutton;
-		if ( btn ) then
-			btn:Hide();
-			ClearOverrideBindings(btn);
-		end
-		self.OverrideOn = false;
+	local btn = self.sabutton;
+	if ( btn ) then
+		btn:Hide();
+		ClearOverrideBindings(btn);
 	end
 end
 
@@ -1083,9 +1076,9 @@ function FishLib:CreateSAButton()
 		btn:SetFrameStrata("LOW");
 		btn:EnableMouse(true);
 		btn:RegisterForClicks("RightButtonUp");
-		btn:SetScript("PostClick", ClickHandled);
 		btn:Hide();
 	end
+	btn:SetScript("PostClick", ClickHandled);
 	self.sabutton = btn;
 	btn.fl = self;
 end
@@ -1108,6 +1101,7 @@ function FishLib:InvokeFishing(useaction)
 	end
 	btn:SetAttribute("item", nil);
 	btn:SetAttribute("target-slot", nil);
+	btn.postclick = nil;
 end
 
 function FishLib:InvokeLuring(id)
@@ -1120,7 +1114,7 @@ function FishLib:InvokeLuring(id)
 	btn:SetAttribute("target-slot", mainhand);
 	btn:SetAttribute("spell", nil);
 	btn:SetAttribute("action", nil);
-	btn.postclick = postclick;
+	btn.postclick = nil;
 end
 
 function FishLib:OverrideClick(postclick)
@@ -1129,7 +1123,6 @@ function FishLib:OverrideClick(postclick)
 		return;
 	end
 	libfishframe.fl = self;
-	self.OverrideOn = true;
 	btn.postclick = postclick;
 	SetOverrideBindingClick(btn, true, "BUTTON2", SABUTTONNAME);
 	btn:Show();
