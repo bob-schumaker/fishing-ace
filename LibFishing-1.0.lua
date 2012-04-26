@@ -302,14 +302,17 @@ local canCreateFrame = false;
 local isLooting = 0;
 local caughtSoFar = 0;
 
-local libfishframe = CreateFrame("Frame");
-libfishframe:RegisterEvent("UPDATE_CHAT_WINDOWS");
-libfishframe:RegisterEvent("LOOT_OPENED");
-libfishframe:RegisterEvent("LOOT_CLOSED");
-libfishframe:RegisterEvent("SKILL_LINES_CHANGED");
-libfishframe:RegisterEvent("UNIT_INVENTORY_CHANGED");
-libfishframe:RegisterEvent("UNIT_SPELLCAST_CHANNEL_START");
-libfishframe:RegisterEvent("UNIT_SPELLCAST_CHANNEL_STOP");
+local libfishframe = FishLibFrame;
+if ( not libfishframe) then
+	libfishframe = CreateFrame("Frame", "FishLibFrame");
+	libfishframe:RegisterEvent("UPDATE_CHAT_WINDOWS");
+	libfishframe:RegisterEvent("LOOT_OPENED");
+	libfishframe:RegisterEvent("LOOT_CLOSED");
+	libfishframe:RegisterEvent("SKILL_LINES_CHANGED");
+	libfishframe:RegisterEvent("UNIT_INVENTORY_CHANGED");
+	libfishframe:RegisterEvent("UNIT_SPELLCAST_CHANNEL_START");
+	libfishframe:RegisterEvent("UNIT_SPELLCAST_CHANNEL_STOP");
+end
 
 libfishframe:SetScript("OnEvent", function(self, event, ...)
 	local arg1 = select(1, ...);
@@ -318,8 +321,9 @@ libfishframe:SetScript("OnEvent", function(self, event, ...)
 		self:UnregisterEvent(event);
 	elseif ( event == "SKILL_LINES_CHANGED" or
 		( event == "UNIT_INVENTORY_CHANGED" and arg1 == "player" ) ) then
-		FishLib:UpdateLureInventory();
-		isLooting = 0;
+		if (libfishframe.fl) then
+			libfishframe.fl:UpdateLureInventory();
+		end
 	elseif (event == "LOOT_OPENED") then
 		if ( IsFishingLoot() ) then
 			isLooting = isLooting + 1;
