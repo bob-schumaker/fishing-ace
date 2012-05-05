@@ -302,27 +302,30 @@ local canCreateFrame = false;
 local isLooting = 0;
 local caughtSoFar = 0;
 
-local libfishframe = FishLibFrame;
-if ( not libfishframe) then
-	libfishframe = CreateFrame("Frame", "FishLibFrame");
-	libfishframe:RegisterEvent("UPDATE_CHAT_WINDOWS");
-	libfishframe:RegisterEvent("LOOT_OPENED");
-	libfishframe:RegisterEvent("LOOT_CLOSED");
-	libfishframe:RegisterEvent("SKILL_LINES_CHANGED");
-	libfishframe:RegisterEvent("UNIT_INVENTORY_CHANGED");
-	libfishframe:RegisterEvent("UNIT_SPELLCAST_CHANNEL_START");
-	libfishframe:RegisterEvent("UNIT_SPELLCAST_CHANNEL_STOP");
+local FISHLIBFRAMENAME="FishLibFrame";
+local fishlibframe = getglobal(FISHLIBFRAMENAME);
+if ( not fishlibframe) then
+	fishlibframe = CreateFrame("Frame", FISHLIBFRAMENAME);
+	fishlibframe:RegisterEvent("UPDATE_CHAT_WINDOWS");
+	fishlibframe:RegisterEvent("LOOT_OPENED");
+	fishlibframe:RegisterEvent("LOOT_CLOSED");
+	fishlibframe:RegisterEvent("SKILL_LINES_CHANGED");
+	fishlibframe:RegisterEvent("UNIT_INVENTORY_CHANGED");
+	fishlibframe:RegisterEvent("UNIT_SPELLCAST_CHANNEL_START");
+	fishlibframe:RegisterEvent("UNIT_SPELLCAST_CHANNEL_STOP");
 end
 
-libfishframe:SetScript("OnEvent", function(self, event, ...)
+fishlibframe.fl = FishLib;
+
+fishlibframe:SetScript("OnEvent", function(self, event, ...)
 	local arg1 = select(1, ...);
 	if ( event == "UPDATE_CHAT_WINDOWS" ) then
 		canCreateFrame = true;
 		self:UnregisterEvent(event);
 	elseif ( event == "SKILL_LINES_CHANGED" or
 		( event == "UNIT_INVENTORY_CHANGED" and arg1 == "player" ) ) then
-		if (libfishframe.fl) then
-			libfishframe.fl:UpdateLureInventory();
+		if (self.fl) then
+			self.fl:UpdateLureInventory();
 		end
 	elseif (event == "LOOT_OPENED") then
 		if ( IsFishingLoot() ) then
@@ -336,11 +339,11 @@ libfishframe:SetScript("OnEvent", function(self, event, ...)
 			return;
 		end
 	end
-	if (libfishframe.fl) then
-		libfishframe.fl:ResetOverride();
+	if (self.fl) then
+		self.fl:ResetOverride();
 	end
 end);
-libfishframe:Show();
+fishlibframe:Show();
 
 local bobber = {};
 bobber["enUS"] = "Fishing Bobber";
@@ -1126,7 +1129,7 @@ function FishLib:OverrideClick(postclick)
 	if ( not btn ) then
 		return;
 	end
-	libfishframe.fl = self;
+	fishlibframe.fl = self;
 	btn.postclick = postclick;
 	SetOverrideBindingClick(btn, true, "BUTTON2", SABUTTONNAME);
 	btn:Show();
