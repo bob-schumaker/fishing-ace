@@ -7,7 +7,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 90000 + tonumber(("$Rev: 576 $"):match("%d+"))
+local MINOR_VERSION = 90000 + tonumber(("$Rev: 587 $"):match("%d+"))
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -299,7 +299,6 @@ end
 
 -- Handle events we care about
 local canCreateFrame = false;
-local isLooting = 0;
 local caughtSoFar = 0;
 
 local FISHLIBFRAMENAME="FishLibFrame";
@@ -307,7 +306,6 @@ local fishlibframe = getglobal(FISHLIBFRAMENAME);
 if ( not fishlibframe) then
 	fishlibframe = CreateFrame("Frame", FISHLIBFRAMENAME);
 	fishlibframe:RegisterEvent("UPDATE_CHAT_WINDOWS");
-	fishlibframe:RegisterEvent("LOOT_OPENED");
 	fishlibframe:RegisterEvent("LOOT_CLOSED");
 	fishlibframe:RegisterEvent("SKILL_LINES_CHANGED");
 	fishlibframe:RegisterEvent("UNIT_INVENTORY_CHANGED");
@@ -327,12 +325,7 @@ fishlibframe:SetScript("OnEvent", function(self, event, ...)
 		if (self.fl) then
 			self.fl:UpdateLureInventory();
 		end
-	elseif (event == "LOOT_OPENED") then
-		if ( IsFishingLoot() ) then
-			isLooting = isLooting + 1;
-		end
 	elseif ( event == "LOOT_CLOSED" ) then
-		isLooting = isLooting - 1;
 		caughtSoFar = caughtSoFar + 1;
 	elseif ( event == "UNIT_SPELLCAST_CHANNEL_START" or event == "UNIT_SPELLCAST_CHANNEL_STOP" ) then
 		if (arg1 ~= "player" ) then
@@ -687,7 +680,7 @@ end
 
 -- look for double clicks
 function FishLib:CheckForDoubleClick()
-	if ( (isLooting == 0) and self.lastClickTime ) then
+	if ( not LootFrame:IsShown() and self.lastClickTime ) then
 		local pressTime = GetTime();
 		local doubleTime = pressTime - self.lastClickTime;
 		if ( (doubleTime < ACTIONDOUBLEWAIT) and (doubleTime > MINACTIONDOUBLECLICK) ) then
@@ -1059,16 +1052,22 @@ end
 -- Secure action button
 local SABUTTONNAME = "LibFishingSAButton";
 
+local function WaitForCombat(self)
+	if (self.clear and not InCombatLockdown()) then
+		self.clear = nil;
+		self:Hide();
+		ClearOverrideBindings(self);
+	end
+end
+
 function FishLib:ResetOverride()
 	local btn = self.sabutton;
 	if ( btn ) then
-		btn:Hide();
-		ClearOverrideBindings(btn);
+		btn.clear = true;
 	end
 end
 
 local function ClickHandled(self)
-	self:Hide();
 	self.fl:ResetOverride();
 	if ( self.postclick ) then
 		self.postclick();
@@ -1079,10 +1078,12 @@ function FishLib:CreateSAButton()
 	local btn = getglobal(SABUTTONNAME);
 	if ( not btn ) then
 		btn = CreateFrame("Button", SABUTTONNAME, UIParent, "SecureActionButtonTemplate");
+		btn.clear = nil;
 		btn:SetPoint("LEFT", UIParent, "RIGHT", 10000, 0);
 		btn:SetFrameStrata("LOW");
 		btn:EnableMouse(true);
 		btn:RegisterForClicks("RightButtonUp");
+		btn:SetScript("OnUpdate", WaitForCombat);
 		btn:Hide();
 	end
 	btn:SetScript("PostClick", ClickHandled);
@@ -1132,6 +1133,7 @@ function FishLib:OverrideClick(postclick)
 	fishlibframe.fl = self;
 	btn.postclick = postclick;
 	SetOverrideBindingClick(btn, true, "BUTTON2", SABUTTONNAME);
+	btn.clear = nil;
 	btn:Show();
 end
 
