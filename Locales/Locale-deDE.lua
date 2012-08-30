@@ -16,6 +16,9 @@ if L then
 	L["Enhance Sounds"] = "Verst\195\164rke Kl\195\164nge"
 	L["EnhanceSoundsMsg"] = "Wenn die Option eingeschaltet ist, wird Fishing Ace! die Umgebungskl\195\164nge verst\195\164rken w\195\164hrend du angelst."
 
+	L["Volume"] = "Volume"
+	L["VolumeMsg"] = "If set, Fishing Ace! will enhance the ambient sound while you're fishing."
+
 	L["Use Action"] = "Benutze Aktion"
 	L["UseActionMsg"] = "Wenn aktiviert, wird Fishing Ace! einen Actionstaste finden mit der gezaubert werden kann."
 

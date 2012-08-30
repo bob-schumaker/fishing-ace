@@ -16,6 +16,9 @@ if L then
 	L["Enhance Sounds"] = true
 	L["EnhanceSoundsMsg"] = "If set, Fishing Ace! will enhance the ambient sound while you're fishing."
 
+	L["Volume"] = true
+	L["VolumeMsg"] = "If set, Fishing Ace! will enhance the ambient sound while you're fishing."
+
 	L["Use Action"] = true
 	L["UseActionMsg"] = "If set, Fishing Ace! will find an action button to cast with."
 

@@ -1,10 +1,10 @@
-## Interface: 40300
+## Interface: 50001
 ## Title: Fishing Ace! |cff7fff7f -Ace3-|r
-## Version: 0.5.7
+## Version: 0.5.8
 ## Notes: Simple right click casting.
 ## Title-zhCN: |cff7fff7f-Ace3-|r Fishing Ace!
-## Notes-zhCN: 右键钓鱼
-## Notes-zhTW: 讓你輕鬆的釣魚
+## Notes-zhCN: \229\143\179\233\148\174\233\146\147\233\177\188
+## Notes-zhTW: \232\174\147\228\189\160\232\188\149\233\172\134\231\154\132\233\135\163\233\173\154
 ## Author: Sutorix
 ## X-Category: Tradeskill
 ## X-AceForum: http://forums.wowace.com/showthread.php?t=4506

@@ -16,6 +16,9 @@ if L then
 	L["Enhance Sounds"] = "加強音效"
 	L["EnhanceSoundsMsg"] = "如果設定，在釣魚時會加強魚上鉤的音效。"
 
+	L["Volume"] = "Volume"
+	L["VolumeMsg"] = "If set, Fishing Ace! will enhance the ambient sound while you're fishing."
+
 	L["Use Action"] = "使用按鈕"
 	L["UseActionMsg"] = "如果設定，會在動作條上使用釣魚按鈕。"
 

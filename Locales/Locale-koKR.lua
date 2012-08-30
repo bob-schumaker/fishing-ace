@@ -16,6 +16,9 @@ if L then
 	L["Enhance Sounds"] = "소리 조절"
 	L["EnhanceSoundsMsg"] = "설정시, Fishing Ace!는 낚시를 하는 동안 환경 소리 음량을 조절합니다."
 
+	L["Volume"] = "Volume"
+	L["VolumeMsg"] = "If set, Fishing Ace! will enhance the ambient sound while you're fishing."
+
 	L["Use Action"] = "행동 사용"
 	L["UseActionMsg"] = "설정시, Fishing Ace!는 시전할 행동 단축키을 찾습니다."
 

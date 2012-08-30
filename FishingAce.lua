@@ -98,6 +98,14 @@ function FAOptions(uiType, uiName)
 				desc = L["EnhanceSoundsMsg"],
 				arg = "sound",
 			},
+			volume = {
+				type = 'range',
+				name = L["Volume"],
+				desc = L["VolumeMsg"],
+				arg = "volume",
+				min = 0,
+				max = 100
+			},
 			action = {
 				type = 'toggle',
 				name = L["Use Action"],
@@ -122,7 +130,10 @@ function FAOptions(uiType, uiName)
 		options.args.sound.order = 3
 		options.args.sound.width = "full"
 		
-		options.args.action.order = 4
+		options.args.volume.order = 4
+		options.args.volume.width = "full"
+		
+		options.args.action.order = 5
 		options.args.action.width = "full"
 	else
 		for arg,info in pairs(options.args) do
@@ -171,6 +182,7 @@ function FishingAce:OnInitialize()
 			loot = true,
 			lure = false,
 			sound = true,
+			volume = 100,
 			action = false,
 		},
 	}
