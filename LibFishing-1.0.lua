@@ -7,7 +7,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 90000 + tonumber(("$Rev: 598 $"):match("%d+"))
+local MINOR_VERSION = 90000 + tonumber(("$Rev: 609 $"):match("%d+"))
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -15,6 +15,9 @@ local FishLib, oldLib = LibStub:NewLibrary(MAJOR_VERSION, MINOR_VERSION)
 if not FishLib then
 	return
 end
+
+-- 5.0.4 has a problem with a global "_" (see some for loops below)
+local _
 
 local Crayon = LibStub("LibCrayon-3.0");
 local BL = LibStub("LibBabble-Zone-3.0"):GetBaseLookupTable();
