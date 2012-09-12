@@ -7,7 +7,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 90000 + tonumber(("$Rev: 609 $"):match("%d+"))
+local MINOR_VERSION = 90000 + tonumber(("$Rev: 618 $"):match("%d+"))
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -20,10 +20,11 @@ end
 local _
 
 local Crayon = LibStub("LibCrayon-3.0");
-local BL = LibStub("LibBabble-Zone-3.0"):GetBaseLookupTable();
-local BZ = LibStub("LibBabble-Zone-3.0"):GetLookupTable()
-local BZR = LibStub("LibBabble-Zone-3.0"):GetReverseLookupTable();
 local LT = LibStub("LibTourist-3.0");
+-- These are now provided by LibTourist
+local BZ = LibStub("LibTourist-3.0"):GetLookupTable()
+local BZR = LibStub("LibTourist-3.0"):GetReverseLookupTable();
+
 local BSL = LibStub("LibBabble-SubZone-3.0"):GetBaseLookupTable();
 local BSZ = LibStub("LibBabble-SubZone-3.0"):GetLookupTable();
 local BSZR = LibStub("LibBabble-SubZone-3.0"):GetReverseLookupTable();
@@ -739,7 +740,7 @@ function FishLib:GetBaseZone(zname)
 		return FishLib.UNKNOWN;
 	end
 	
-	if (zname and not BL[zname] ) then
+	if (zname and not BZ[zname] ) then
 		zname = BZR[zname];
 	end
 	if (not zname) then
@@ -767,7 +768,7 @@ function FishLib:GetLocZone(zname)
 		return UNKNOWN;
 	end
 
-	if (zname and BL[zname]) then
+	if (zname and BZR[zname]) then
 		zname = BZ[zname];
 	end
 	if (not zname) then

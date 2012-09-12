@@ -150,6 +150,7 @@ end
 
 FishingAce = LibStub("AceAddon-3.0"):NewAddon("FishingAce", "AceConsole-3.0", "AceEvent-3.0", "AceTimer-3.0", "AceHook-3.0")
 
+local LastLure
 local casting_timer = null
 function FishingAce:PostCastUpdate(self)
 	local stop = true
@@ -157,15 +158,17 @@ function FishingAce:PostCastUpdate(self)
 	if ( not InCombatLockdown() ) then
 		if ( AddingLure ) then
 			local sp, sub, txt, tex, st, et, trade, int = UnitChannelInfo("player");
-			if ( not sp or (dn and dn ~= LastLure) ) then
-				AddingLure = false
+			local _, lure = FL:GetPoleBonus();
+			if ( not sp or (lure and lure == LastLure.b) ) then
+				AddingLure = false;
+				FL:UpdateLureInventory();
 			else
-				stop = false
+				stop = false;
 			end
 		end
 		if ( stop and casting_timer ) then
 			FishingAce:CancelTimer(casting_timer)
-			casting_timer = null
+			casting_timer = nil
 		end
 	end
 end
@@ -255,12 +258,6 @@ local function StartFishingMode(self)
 			self.resetClickToMove = true
 			SetCVar("autointeract", "0")
 		end
-		if ( self.db.profile.loot ) then
-			if ( not GetCVarBool("autoLootDefault") ) then
-				self.resetAutoLoot = true
-				SetCVar("autoLootDefault", 1)
-			end
-		end
 		self.startedFishing = GetTime()
 		EnhanceFishingSounds(self, true)
 	end
@@ -276,10 +273,6 @@ local function StopFishingMode(self)
 		SetCVar("autointeract", "1")
 		self.resetClickToMove = nil
 	end
-	if ( self.resetAutoLoot ) then
-		SetCVar("autoLootDefault", 0)
-		self.resetAutoLoot = nil
-	end
 end
 
 local function FishingMode(self)
@@ -290,7 +283,6 @@ local function FishingMode(self)
 	end
 end
 
-local LastLure
 local function SetupLure()
 	if ( not AddingLure ) then
 		if ( FishingAce.db.profile.lure ) then
@@ -299,7 +291,7 @@ local function SetupLure()
 			if ( state and bestlure ) then
 			   FL:InvokeLuring(bestlure.id)
 			   AddingLure = true
-			   LastLure = bestlure.n
+			   LastLure = bestlure
 			   return true
 			end
 		end
@@ -339,6 +331,7 @@ function FishingAce:OnEnable()
 	self:RegisterEvent("SPELLS_CHANGED")
 	self:RegisterEvent("PLAYER_REGEN_ENABLED")
 	self:RegisterEvent("PLAYER_REGEN_DISABLED")
+	self:RegisterEvent("LOOT_OPENED")
 	
 	if ( FishingBuddy and FishingBuddy.Message ) then
          FishingBuddy.Message(L["FishingAce is active, easy cast disabled."]);
@@ -375,6 +368,19 @@ end
 
 function FishingAce:PLAYER_REGEN_ENABLED()
 	FL:ResetOverride();
+end
+
+function FishingAce:LOOT_OPENED()
+	if ( IsFishingLoot()) then
+		-- if we want to autoloot, and Blizz isn't, let's grab stuff
+		if (FishingAce.db.profile.loot and (GetCVar("autoLootDefault") ~= "1" )) then
+			for index = 1, GetNumLootItems(), 1 do
+				LootSlot(index);
+			end
+		end
+		FL:ExtendDoubleClick();
+		LureState = 0;
+	end
 end
 
 function FishingAce:PLAYER_ENTERING_WORLD()
