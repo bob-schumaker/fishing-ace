@@ -7,7 +7,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 90000 + tonumber(("$Rev: 618 $"):match("%d+"))
+local MINOR_VERSION = 90000 + tonumber(("$Rev: 633 $"):match("%d+"))
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -310,7 +310,7 @@ local fishlibframe = getglobal(FISHLIBFRAMENAME);
 if ( not fishlibframe) then
 	fishlibframe = CreateFrame("Frame", FISHLIBFRAMENAME);
 	fishlibframe:RegisterEvent("UPDATE_CHAT_WINDOWS");
-	fishlibframe:RegisterEvent("LOOT_CLOSED");
+	fishlibframe:RegisterEvent("LOOT_OPENED");
 	fishlibframe:RegisterEvent("SKILL_LINES_CHANGED");
 	fishlibframe:RegisterEvent("UNIT_INVENTORY_CHANGED");
 	fishlibframe:RegisterEvent("UNIT_SPELLCAST_CHANNEL_START");
@@ -329,15 +329,14 @@ fishlibframe:SetScript("OnEvent", function(self, event, ...)
 		if (self.fl) then
 			self.fl:UpdateLureInventory();
 		end
-	elseif ( event == "LOOT_CLOSED" ) then
-		caughtSoFar = caughtSoFar + 1;
+	elseif ( event == "LOOT_OPENED" ) then
+		if (IsFishingLoot()) then
+			caughtSoFar = caughtSoFar + 1;
+		end
 	elseif ( event == "UNIT_SPELLCAST_CHANNEL_START" or event == "UNIT_SPELLCAST_CHANNEL_STOP" ) then
 		if (arg1 ~= "player" ) then
 			return;
 		end
-	end
-	if (self.fl) then
-		self.fl:ResetOverride();
 	end
 end);
 fishlibframe:Show();
@@ -618,6 +617,18 @@ function FishLib:IsFishingPole(itemLink)
 	return false;
 end
 
+function FishLib:IsFishingGear()
+	if (self:IsFishingPole()) then
+		return true;
+	end
+	for i=1,16,1 do
+		if (self:FishingBonusPoints(slotinfo[i].id, 1) > 0) then
+			return true;
+		end
+	end
+	-- return nil;
+end
+
 -- fish tracking skill
 function FishLib:GetTrackingID(tex)
 	if ( tex ) then
@@ -852,7 +863,7 @@ function FishLib:GetFishingSkillLine(join, withzone)
 		part1 = part1..Crayon:Red(UNKNOWN);
 	end
 	-- have some more details if we've got a pole equipped
-	if ( self:IsFishingPole() ) then
+	if ( self:IsFishingGear() ) then
 		part2 = Crayon:Green(skill.."+"..mods).." "..Crayon:Silver("["..totskill.."]");
 	end
 	if ( join ) then
@@ -1064,18 +1075,11 @@ end
 -- Secure action button
 local SABUTTONNAME = "LibFishingSAButton";
 
-local function WaitForCombat(self)
-	if (self.clear and not InCombatLockdown()) then
-		self.clear = nil;
-		self:Hide();
-		ClearOverrideBindings(self);
-	end
-end
-
 function FishLib:ResetOverride()
 	local btn = self.sabutton;
 	if ( btn ) then
-		btn.clear = true;
+		btn.holder:Hide();
+		ClearOverrideBindings(btn);
 	end
 end
 
@@ -1089,14 +1093,16 @@ end
 function FishLib:CreateSAButton()
 	local btn = getglobal(SABUTTONNAME);
 	if ( not btn ) then
-		btn = CreateFrame("Button", SABUTTONNAME, UIParent, "SecureActionButtonTemplate");
-		btn.clear = nil;
-		btn:SetPoint("LEFT", UIParent, "RIGHT", 10000, 0);
-		btn:SetFrameStrata("LOW");
+		local holder = CreateFrame("Frame", nil, UIParent);
+		btn = CreateFrame("Button", SABUTTONNAME, holder, "SecureActionButtonTemplate");
+		btn.holder = holder;
 		btn:EnableMouse(true);
 		btn:RegisterForClicks("RightButtonUp");
-		btn:SetScript("OnUpdate", WaitForCombat);
-		btn:Hide();
+		btn:Show();
+
+		holder:SetPoint("LEFT", UIParent, "RIGHT", 10000, 0);
+		holder:SetFrameStrata("LOW");
+		holder:Hide();
 	end
 	btn:SetScript("PostClick", ClickHandled);
 	self.sabutton = btn;
@@ -1143,10 +1149,10 @@ function FishLib:OverrideClick(postclick)
 		return;
 	end
 	fishlibframe.fl = self;
+	btn.fl = self;
 	btn.postclick = postclick;
 	SetOverrideBindingClick(btn, true, "BUTTON2", SABUTTONNAME);
-	btn.clear = nil;
-	btn:Show();
+	btn.holder:Show();
 end
 
 -- Taken from wowwiki tooltip handling suggestions

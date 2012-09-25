@@ -1,6 +1,6 @@
 ## Interface: 50001
 ## Title: Fishing Ace! |cff7fff7f -Ace3-|r
-## Version: 0.5.9
+## Version: 0.6
 ## Notes: Simple right click casting.
 ## Title-zhCN: |cff7fff7f-Ace3-|r Fishing Ace!
 ## Notes-zhCN: \229\143\179\233\148\174\233\146\147\233\177\188
