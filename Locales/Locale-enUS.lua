@@ -3,7 +3,7 @@ local L = LibStub("AceLocale-3.0"):NewLocale("FishingAce", "enUS", true)
 if L then
 	L["on"] = "on"
 	L["off"] = "off"
-	
+
 	L["Fishing Ace!"] = "Fishing Ace!"
 	L["Description"] = "Fishing Ace! enables you to fish with a double-click whenever it detects you're using a fishing pole. Settings to enhance your fishing experience can be set below."
 
@@ -23,7 +23,7 @@ if L then
 	L["UseActionMsg"] = "If set, Fishing Ace! will find an action button to cast with."
 
 	L["LureSkill"] = "Use: When applied to your fishing pole, increases Fishing by (%d) for %d minutes."
-	
+
 	L["FishingAce is active, easy cast disabled."] = true
 	L["FishingAce on standby, easy cast enabled."] = true
 end
