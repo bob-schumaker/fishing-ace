@@ -7,7 +7,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 90000 + tonumber(("$Rev: 633 $"):match("%d+"))
+local MINOR_VERSION = 90000 + tonumber(("$Rev: 660 $"):match("%d+"))
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -304,13 +304,16 @@ end
 -- Handle events we care about
 local canCreateFrame = false;
 local caughtSoFar = 0;
+local lastSkillCheck = 0;
 
 local FISHLIBFRAMENAME="FishLibFrame";
 local fishlibframe = getglobal(FISHLIBFRAMENAME);
 if ( not fishlibframe) then
 	fishlibframe = CreateFrame("Frame", FISHLIBFRAMENAME);
+	fishlibframe:RegisterEvent("VARIABLES_LOADED");
 	fishlibframe:RegisterEvent("UPDATE_CHAT_WINDOWS");
 	fishlibframe:RegisterEvent("LOOT_OPENED");
+	fishlibframe:RegisterEvent("CHAT_MSG_SKILL");
 	fishlibframe:RegisterEvent("SKILL_LINES_CHANGED");
 	fishlibframe:RegisterEvent("UNIT_INVENTORY_CHANGED");
 	fishlibframe:RegisterEvent("UNIT_SPELLCAST_CHANNEL_START");
@@ -329,10 +332,14 @@ fishlibframe:SetScript("OnEvent", function(self, event, ...)
 		if (self.fl) then
 			self.fl:UpdateLureInventory();
 		end
+	elseif ( event == "CHAT_MSG_SKILL" ) then
+		caughtSoFar = 0;
 	elseif ( event == "LOOT_OPENED" ) then
 		if (IsFishingLoot()) then
 			caughtSoFar = caughtSoFar + 1;
 		end
+	elseif ( event == "VARIABLES_LOADED" ) then
+			lastSkillCheck, _, _ = self.fl:GetCurrentSkill();
 	elseif ( event == "UNIT_SPELLCAST_CHANNEL_START" or event == "UNIT_SPELLCAST_CHANNEL_STOP" ) then
 		if (arg1 ~= "player" ) then
 			return;
@@ -838,7 +845,7 @@ function FishLib:GetFishingLevel(zone, subzone)
 end
 
 -- return a nicely formatted line about the local zone skill and yours
-function FishLib:GetFishingSkillLine(join, withzone)
+function FishLib:GetFishingSkillLine(join, withzone, isfishing)
 	local part1 = "";
 	local part2 = "";
 	local skill, mods, skillmax = self:GetCurrentSkill();
@@ -863,7 +870,7 @@ function FishLib:GetFishingSkillLine(join, withzone)
 		part1 = part1..Crayon:Red(UNKNOWN);
 	end
 	-- have some more details if we've got a pole equipped
-	if ( self:IsFishingGear() ) then
+	if ( isfishing or self:IsFishingGear() ) then
 		part2 = Crayon:Green(skill.."+"..mods).." "..Crayon:Silver("["..totskill.."]");
 	end
 	if ( join ) then
@@ -883,6 +890,7 @@ tinsert(skilltable, { ["level"] = 200, ["inc"] = 2 });
 tinsert(skilltable, { ["level"] = 300, ["inc"] = 2 });
 tinsert(skilltable, { ["level"] = 450, ["inc"] = 4 });
 tinsert(skilltable, { ["level"] = 525, ["inc"] = 6 });
+tinsert(skilltable, { ["level"] = 600, ["inc"] = 10 });
 
 local newskilluptable = {};
 function FishLib:SetSkillupTable(table)
@@ -903,25 +911,17 @@ function FishLib:CatchesAtSkill(skill)
 	-- return nil;
 end
 
-function FishLib:GetSkillUpInfo(lastSkillCheck)
+function FishLib:GetSkillUpInfo()
 	local skill, mods, skillmax = self:GetCurrentSkill();
 	if ( skillmax and skill < skillmax ) then
 		local needed = self:CatchesAtSkill(skill);
 		if ( needed ) then
-			if ( not lastSkillCheck or lastSkillCheck ~= skill ) then
-				if ( lastSkillCheck ) then
-					if (not newskilluptable[lastSkillCheck]) then
-						newskilluptable[lastSkillCheck] = {};
-						tinsert(newskilluptable[lastSkillCheck], caughtsofar);
-					end
-					caughtSoFar = 0;
-				end
-				lastSkillCheck = skill;
-			end
-			return lastSkillCheck, caughtSoFar, needed;
+			return caughtSoFar, needed;
 		end
+	else
+		caughtSoFar = 0;
 	end
-	return lastSkillCheck, caughtSoFar, nil;
+	return caughtSoFar, nil;
 end
 
 -- we should have some way to believe 
@@ -929,7 +929,7 @@ function FishLib:SetCaughtSoFar(value)
 	if ( FishingBuddy and FishingBuddy.GetSetting ) then
 		caughtSoFar = FishingBuddy.GetSetting("CaughtSoFar") or 0;
 	else
-		caughtSoFar = value;
+		caughtSoFar = value or 0;
 	end
 end
 
@@ -1249,7 +1249,7 @@ function FishLib:GetOutfitBonus()
 end
 
 -- return a list of the best items we have for a fishing outfit
-function FishLib:GetFishingOutfitItems(wearing)
+function FishLib:GetFishingOutfitItems(wearing, usepole)
 	local ibp = function(link) return self:FishingBonusPoints(link); end;
 	-- find fishing gear
 	-- no affinity, check all bags
@@ -1257,39 +1257,41 @@ function FishLib:GetFishingOutfitItems(wearing)
 	local itemtable = {};
 	for invslot=1,17,1 do
 		local slotid = slotinfo[invslot].id;
-		local slotname = slotinfo[invslot].name;
-		local maxb = nil;
-		local link;
-		-- should we include what we're already wearing?
-		if ( wearing ) then
-			link = GetInventoryItemLink("player", slotid);
-			if ( link ) then
-				maxb = self:FishingBonusPoints(link);
-				outfit = outfit or {};
-				if (maxb > 0) then
-					outfit[invslot] = { link=link, slot=slotid };
+		if ( not nopole or slotid ~= main ) then
+			local slotname = slotinfo[invslot].name;
+			local maxb = nil;
+			local link;
+			-- should we include what we're already wearing?
+			if ( wearing ) then
+				link = GetInventoryItemLink("player", slotid);
+				if ( link ) then
+					maxb = self:FishingBonusPoints(link);
+					outfit = outfit or {};
+					if (maxb > 0) then
+						outfit[invslot] = { link=link, slot=slotid };
+					end
 				end
 			end
-		end
-
-		-- this only gets items in bags, hence the check above for slots
-		wipe(itemtable);
-		itemtable = GetInventoryItemsForSlot(slotid, itemtable);
-
-		for location,id in pairs(itemtable) do
-			local player, bank, bags, slot, bag = EquipmentManager_UnpackLocation(location);
-			if ( bags ) then
-				link = GetContainerItemLink(bag, slot);
-			else
-				link = nil;
-			end
-			if ( link ) then
-				local b = self:FishingBonusPoints(link);
-				if (b > 0) then
-					if ( not maxb or b > maxb ) then
-						maxb = b;
-						outfit = outfit or {};
-						outfit[slotid] = { link=link, bag=bag, slot=slot, slotname=slotname };
+	
+			-- this only gets items in bags, hence the check above for slots
+			wipe(itemtable);
+			itemtable = GetInventoryItemsForSlot(slotid, itemtable);
+	
+			for location,id in pairs(itemtable) do
+				local player, bank, bags, slot, bag = EquipmentManager_UnpackLocation(location);
+				if ( bags ) then
+					link = GetContainerItemLink(bag, slot);
+				else
+					link = nil;
+				end
+				if ( link ) then
+					local b = self:FishingBonusPoints(link);
+					if (b > 0) then
+						if ( not maxb or b > maxb ) then
+							maxb = b;
+							outfit = outfit or {};
+							outfit[slotid] = { link=link, bag=bag, slot=slot, slotname=slotname };
+						end
 					end
 				end
 			end
@@ -1350,8 +1352,12 @@ end
 -- replace #KEYWORD# with the value of keyword (which might be a color)
 local function FixupThis(target, tag, what)
 	if ( type(what) == "table" ) then
+		local fixed = {};
 		for idx,str in pairs(what) do
-			what[idx] = FixupThis(target, tag, str);
+			fixed[idx] = FixupThis(target, tag, str);
+		end
+		for idx,str in pairs(fixed) do
+			what[idx] = str;
 		end
 		return what;
 	elseif ( type(what) == "string" ) then
@@ -1384,8 +1390,12 @@ function FishLib:FixupEntry(constants, tag)
 end
 
 local function FixupStrings(target)
+	local fixed = {};
 	for tag,_ in pairs(target) do
-		target[tag] = FixupThis(target, tag, target[tag]);
+		fixed[tag] = FixupThis(target, tag, target[tag]);
+	end
+	for tag,str in pairs(fixed) do
+		target[tag] = str;
 	end
 end
 
