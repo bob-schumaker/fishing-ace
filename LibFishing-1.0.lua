@@ -7,7 +7,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 90000 + tonumber(("$Rev: 660 $"):match("%d+"))
+local MINOR_VERSION = 90000 + tonumber(("$Rev: 676 $"):match("%d+"))
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -578,7 +578,7 @@ end
 
 function FishLib:IsFishingPool(text)
 	if ( not text ) then
-		text = self:GetTooltipText();
+		text = self:GetLastTooltipText();
 	end
 	if ( text ) then
 		local check = string.lower(text);
@@ -593,6 +593,10 @@ function FishLib:IsFishingPool(text)
 		end
 	end
 	-- return nil;
+end
+
+function FishLib:AddSchoolName(name)
+	tinsert(self.SCHOOLS, { name = name, kind = SCHOOL_FISH });
 end
 
 function FishLib:IsFishingPole(itemLink)
@@ -832,6 +836,7 @@ local subzoneskills = {
 	["Marshlight Lake"] = 450,
 	["Sporewind Lake"] = 450,
 	["Serpent Lake"] = 450,
+	["Binan Village"] = 750,	-- seems to be higher here, for some reason
 };
 
 function FishLib:GetFishingLevel(zone, subzone)
@@ -1447,6 +1452,7 @@ FishLib.SCHOOL_TASTY = 4;
 FishLib.SCHOOL_OIL = 5;
 FishLib.SCHOOL_CHURNING = 6;
 FishLib.SCHOOL_FLOTSAM = 7;
+FishLib.SCHOOL_FIRE = 8;
 
 local FLTrans = {};
 
@@ -1460,6 +1466,7 @@ function FLTrans:Setup(lang, school, ...)
 		local name, kind = select(idx, ...);
 		tinsert(schools, { name = name, kind = kind });
 	end
+	-- add in the fish we know are in schools
 	self[lang].SCHOOLS = schools;
 end
 
@@ -1472,7 +1479,8 @@ FLTrans:Setup("enUS", "school",
 	"Muddy Churning Water", FishLib.SCHOOL_CHURNING,
 	"Pure Water", FishLib.SCHOOL_WATER,
 	"Steam Pump Flotsam", FishLib.SCHOOL_FLOTSAM,
-	"School of Tastyfish", FishLib.SCHOOL_TASTY);
+	"School of Tastyfish", FishLib.SCHOOL_TASTY,
+	"Pool of Fire", FishLib.SCHOOL_FIRE);
 
 FLTrans:Setup("koKR", "떼",
 	"표류하는 잔해", FishLib.SCHOOL_WRECKAGE, --	 Floating Wreckage
