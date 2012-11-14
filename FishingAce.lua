@@ -85,18 +85,35 @@ function FAOptions(uiType, uiName)
 				name = L["Auto Loot"],
 				desc = L["AutoLootMsg"],
 				arg = "loot",
+				order = 1,
 			},
 			lure = {
 				type = 'toggle',
 				name = L["Auto Lures"],
 				desc = L["AutoLureMsg"],
 				arg = "lure",
+				order = 2,
 			},
 			sound = {
 				type = 'toggle',
 				name = L["Enhance Sounds"],
 				desc = L["EnhanceSoundsMsg"],
 				arg = "sound",
+				order = 3,
+			},
+			partial = {
+				type = 'toggle',
+				name = L["Partial Gear"],
+				desc = L["PartialGearMsg"],
+				arg = "partial",
+				order = 4,
+			},
+			action = {
+				type = 'toggle',
+				name = L["Use Action"],
+				desc = L["UseActionMsg"],
+				arg = "action",
+				order = 5,
 			},
 			volume = {
 				type = 'range',
@@ -104,13 +121,21 @@ function FAOptions(uiType, uiName)
 				desc = L["VolumeMsg"],
 				arg = "volume",
 				min = 0,
-				max = 100
+				max = 100,
+				order = 6,
 			},
-			action = {
-				type = 'toggle',
-				name = L["Use Action"],
-				desc = L["UseActionMsg"],
-				arg = "action",
+			castingkey = {
+				type = "select",
+				desc = L["CastingKeyMsg"],
+				name = L["Casting Key"],
+				style = "dropdown",
+				arg = "castingkey",
+				values = {
+					NONE = "none",
+					CTRL_KEY_TEXT = "control",
+					SHIFT_KEY_TEXT = "shift",
+				},
+				order = 7,
 			},
 		}
 	}
@@ -120,25 +145,18 @@ function FAOptions(uiType, uiName)
 				order = 0,
 				name = L["Description"],
 			}
-
-		options.args.loot.order = 1
-		options.args.loot.width = "full"
-		
-		options.args.lure.order = 2
-		options.args.lure.width = "full"
-		
-		options.args.sound.order = 3
-		options.args.sound.width = "full"
-		
-		options.args.volume.order = 4
-		options.args.volume.width = "full"
-		
-		options.args.action.order = 5
-		options.args.action.width = "full"
 	else
+		local desc;
 		for arg,info in pairs(options.args) do
-			local onoff = db[info.arg] and "FF00FF00"..L["on"] or "FFFF0000"..L["off"]
-			options.args[arg].desc = options.args[arg].desc.." [|c"..onoff.."|r]"
+			if ( options.args[arg].type == 'toggle' ) then
+				local onoff = db[info.arg] and "FF00FF00"..L["on"] or "FFFF0000"..L["off"];
+				desc = " [|c"..onoff.."|r]";
+			elseif (db[info.arg]) then
+				desc = " ["..db[info.arg].."]";
+			else
+				desc = "";
+			end
+			options.args[arg].desc = options.args[arg].desc..desc;
 		end
 	end
 
@@ -185,8 +203,10 @@ function FishingAce:OnInitialize()
 			loot = true,
 			lure = false,
 			sound = true,
+			partial = false,
 			volume = 100,
 			action = false,
+			castingkey = NONE,
 		},
 	}
     self.db = LibStub("AceDB-3.0"):New("FishingAceDB", defaults, "Default")
@@ -208,8 +228,26 @@ function FishingAce:OnInitialize()
     FL:WatchBobber(false)
 end
 
+-- handle option keys for enabling casting
+local key_actions = {
+	["none"] = function() return false; end,
+	["shift"] = function() return IsShiftKeyDown(); end,
+	["control"] = function() return IsControlKeyDown(); end,
+}
+local function CastingKeys(self)
+	local setting = self.db.profile.castingkey;
+	if ( setting and key_actions[setting] ) then
+		return key_actions[setting]();
+	else
+		return false;
+	end
+end
+
 local function HijackCheck()
-	if ( not InCombatLockdown() and FL:IsFishingPole() ) then
+	local self = FishingAce;
+	if ( not InCombatLockdown() and
+			(CastingKeys(self) or
+			 FL:IsFishingReady(self.db.profile.partial)) ) then
 		return true
 	end
 end
@@ -234,7 +272,7 @@ local function EnhanceFishingSounds(self, enhance)
                 efsv["Sound_SFXVolume"] = sv
 				efsv["particleDensity"] = pd;
 				-- turn 'em off!
-                SetCVar("Sound_MasterVolume", 1.0)
+                SetCVar("Sound_MasterVolume", FishingAce.db.profile.volume / 100.0)
                 SetCVar("Sound_SFXVolume", 1.0)
                 SetCVar("Sound_MusicVolume", 0.0)
                 SetCVar("Sound_AmbienceVolume", 0.0)
@@ -276,7 +314,7 @@ local function StopFishingMode(self)
 end
 
 local function FishingMode(self)
-	if ( FL:IsFishingPole() ) then
+	if ( FL:IsFishingReady(self.db.profile.partial) ) then
 		StartFishingMode(self)
 	else
 		StopFishingMode(self)

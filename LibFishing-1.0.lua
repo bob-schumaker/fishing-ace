@@ -7,13 +7,19 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 90000 + tonumber(("$Rev: 676 $"):match("%d+"))
+local MINOR_VERSION = 90000 + tonumber(("$Rev: 704 $"):match("%d+"))
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
 local FishLib, oldLib = LibStub:NewLibrary(MAJOR_VERSION, MINOR_VERSION)
 if not FishLib then
 	return
+end
+
+if (oldLib) then
+	for k,v in oldLib do
+		FishLib.k = v;
+	end
 end
 
 -- 5.0.4 has a problem with a global "_" (see some for loops below)
@@ -154,6 +160,13 @@ local FISHINGLURES = {
 		["s"] = 1,
 		["d"] = 10,
 	},
+	{	["id"] = 88710,
+		["n"] = "Nat's Hat",					  -- 75 for 10 mins
+		["b"] = 150,
+		["s"] = 100,
+		["d"] = 10,
+		["w"] = true,
+	},
 }
 
 -- sort ascending bonus and ascending time
@@ -217,7 +230,7 @@ end
 -- Deal with lures
 function FishLib:HasBuff(buffName)
 	if ( buffName ) then
-		 local name, _, _, _, _, _, _, _, _ = UnitBuff("player", buffName);	  
+		 local name, _, _, _, _, _, _, _, _ = UnitBuff("player", buffName);
 		 return name ~= nil;
 	end
 	-- return nil
@@ -281,6 +294,19 @@ function FishLib:FindBestLure(b, state, usedrinks)
 			state = state or 0;
 			local checklure;
 			local useit, b = 0;
+			
+			-- Look for lures we're wearing, first
+			for s=state+1,#lureinventory,1 do
+				checklure = lureinventory[s];
+				if (checklure.w) then
+					useit, b = UseThisLure(checklure, b, enchant, skill, level);
+					if ( useit and b and b > 0 ) then
+						return s, checklure;
+					end
+				end
+			end
+
+			b = 0;
 			for s=state+1,#lureinventory,1 do
 				checklure = lureinventory[s];
 				useit, b = UseThisLure(checklure, b, enchant, skill, level);
@@ -303,14 +329,12 @@ end
 
 -- Handle events we care about
 local canCreateFrame = false;
-local caughtSoFar = 0;
-local lastSkillCheck = 0;
+FishLib.caughtSoFar = 0;
 
 local FISHLIBFRAMENAME="FishLibFrame";
 local fishlibframe = getglobal(FISHLIBFRAMENAME);
 if ( not fishlibframe) then
 	fishlibframe = CreateFrame("Frame", FISHLIBFRAMENAME);
-	fishlibframe:RegisterEvent("VARIABLES_LOADED");
 	fishlibframe:RegisterEvent("UPDATE_CHAT_WINDOWS");
 	fishlibframe:RegisterEvent("LOOT_OPENED");
 	fishlibframe:RegisterEvent("CHAT_MSG_SKILL");
@@ -333,13 +357,11 @@ fishlibframe:SetScript("OnEvent", function(self, event, ...)
 			self.fl:UpdateLureInventory();
 		end
 	elseif ( event == "CHAT_MSG_SKILL" ) then
-		caughtSoFar = 0;
+		self.fl.caughtSoFar = 0;
 	elseif ( event == "LOOT_OPENED" ) then
 		if (IsFishingLoot()) then
-			caughtSoFar = caughtSoFar + 1;
+			self.fl.caughtSoFar = self.fl.caughtSoFar + 1;
 		end
-	elseif ( event == "VARIABLES_LOADED" ) then
-			lastSkillCheck, _, _ = self.fl:GetCurrentSkill();
 	elseif ( event == "UNIT_SPELLCAST_CHANNEL_START" or event == "UNIT_SPELLCAST_CHANNEL_STOP" ) then
 		if (arg1 ~= "player" ) then
 			return;
@@ -347,29 +369,6 @@ fishlibframe:SetScript("OnEvent", function(self, event, ...)
 	end
 end);
 fishlibframe:Show();
-
-local bobber = {};
-bobber["enUS"] = "Fishing Bobber";
-bobber["esES"] = "Anzuelo";
-bobber["esMX"] = "Anzuelo";
-bobber["deDE"] = "Schwimmer";
-bobber["frFR"] = "Flotteur";
-bobber["ruRU"] = "Поплавок";
-bobber["zhTW"] = "釣魚浮標";
-bobber["zhCN"] = "垂钓水花";
-
-local locale = GetLocale();
-if ( bobber[locale] ) then
-	FishLib.BOBBER_NAME = bobber[locale];
-else
-	FishLib.BOBBER_NAME = bobber["enUS"];
-end
-
--- override our choice if you know better
-function FishLib:SetBobberName(name)
-	self.BOBBER_NAME = name;
-end
-
 
 -- set up a table of slot mappings for looking up item information
 local slotinfo = {
@@ -578,7 +577,7 @@ end
 
 function FishLib:IsFishingPool(text)
 	if ( not text ) then
-		text = self:GetLastTooltipText();
+		text = self:GetTooltipText();
 	end
 	if ( text ) then
 		local check = string.lower(text);
@@ -640,6 +639,14 @@ function FishLib:IsFishingGear()
 	-- return nil;
 end
 
+function FishLib:IsFishingReady(partial)
+	if ( partial ) then
+		return self:IsFishingGear();
+	else
+		return self:IsFishingPole();
+	end
+end
+
 -- fish tracking skill
 function FishLib:GetTrackingID(tex)
 	if ( tex ) then
@@ -661,12 +668,31 @@ function FishLib:GetFindFishID()
 	return self.FindFishID;
 end
 
+local bobber = {};
+bobber["enUS"] = "Fishing Bobber";
+bobber["esES"] = "Anzuelo";
+bobber["esMX"] = "Anzuelo";
+bobber["deDE"] = "Schwimmer";
+bobber["frFR"] = "Flotteur";
+bobber["ptBR"] = "Isca de Pesca";
+bobber["ruRU"] = "Поплавок";
+bobber["zhTW"] = "釣魚浮標";
+bobber["zhCN"] = "垂钓水花";
+
 -- in case the addon is smarter than us
 function FishLib:SetBobberName(name)
 	self.BOBBER_NAME = name;
 end
 
 function FishLib:GetBobberName()
+	if ( not self.BOBBER_NAME ) then
+		local locale = GetLocale();
+		if ( bobber[locale] ) then
+			self.BOBBER_NAME = bobber[locale];
+		else
+			self.BOBBER_NAME = bobber["enUS"];
+		end
+	end
 	return self.BOBBER_NAME;
 end
 
@@ -695,10 +721,10 @@ end
 
 function FishLib:OnFishingBobber()
 	if ( GameTooltip:IsVisible() and not UIFrameIsFading(GameTooltip) ) then
-		local text = self:GetTooltipText();
+		local text = self:GetTooltipText() or self:GetLastTooltipText();
 		if ( text ) then
 			-- let a partial match work (for translations)
-			return ( text and string.find(text, self.BOBBER_NAME ) );
+			return ( text and string.find(text, self:GetBobberName() ) );
 		end
 	end
 	return false;
@@ -921,25 +947,25 @@ function FishLib:GetSkillUpInfo()
 	if ( skillmax and skill < skillmax ) then
 		local needed = self:CatchesAtSkill(skill);
 		if ( needed ) then
-			return caughtSoFar, needed;
+			return self.caughtSoFar, needed;
 		end
 	else
-		caughtSoFar = 0;
+		self.caughtSoFar = 0;
 	end
-	return caughtSoFar, nil;
+	return self.caughtSoFar, nil;
 end
 
 -- we should have some way to believe 
 function FishLib:SetCaughtSoFar(value)
 	if ( FishingBuddy and FishingBuddy.GetSetting ) then
-		caughtSoFar = FishingBuddy.GetSetting("CaughtSoFar") or 0;
+		self.caughtSoFar = FishingBuddy.GetSetting("CaughtSoFar") or 0;
 	else
-		caughtSoFar = value or 0;
+		self.caughtSoFar = value or 0;
 	end
 end
 
 function FishLib:GetCaughtSoFar()
-	return caughtSoFar;
+	return self.caughtSoFar;
 end
 
 -- Find an action bar for fishing, if there is one
