@@ -24,6 +24,12 @@ if L then
 
 	L["LureSkill"] = "Use: When applied to your fishing pole, increases Fishing by (%d) for %d minutes."
 
+	L["Casting Key"] = "Casting Key"
+	L["CastingKeyMsg"] = "Set to a modifier key to force a fishing cast, even when no pole equipped."
+
+	L["Partial Gear"] = "Partial Gear"
+	L["PartialGearMsg"] = "If set, cast if any piece of fishing gear is equipped."
+
 	L["FishingAce is active, easy cast disabled."] = true
 	L["FishingAce on standby, easy cast enabled."] = true
 end
