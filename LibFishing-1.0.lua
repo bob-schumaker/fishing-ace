@@ -7,7 +7,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 90000 + tonumber(("$Rev: 704 $"):match("%d+"))
+local MINOR_VERSION = 90000 + tonumber(("$Rev: 720 $"):match("%d+"))
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -143,25 +143,26 @@ local FISHINGLURES = {
 		["d"] = 10,
 	},
 	{	["id"] = 46006,
-		["n"] = "Glow Worm",							  -- 100 for 60 minutes
+		["n"] = "Glow Worm",						-- 100 for 60 minutes
 		["b"] = 100,
 		["s"] = 100,
 		["d"] = 60,
+		["l"] = 1,
 	},
 	{	["id"] = 68049,
-		["n"] = "Heat-Treated Spinning Lure",		  -- 150 for 5 minutes
+		["n"] = "Heat-Treated Spinning Lure",		 -- 150 for 5 minutes
 		["b"] = 150,
 		["s"] = 250,
 		["d"] = 5,
 	},
 	{	["id"] = 67404,
-		["n"] = "Glass Fishing Bobber",				  -- ???
+		["n"] = "Glass Fishing Bobber",				-- ???
 		["b"] = 15,
 		["s"] = 1,
 		["d"] = 10,
 	},
 	{	["id"] = 88710,
-		["n"] = "Nat's Hat",					  -- 75 for 10 mins
+		["n"] = "Nat's Hat",						-- 150 for 10 mins
 		["b"] = 150,
 		["s"] = 100,
 		["d"] = 10,
@@ -204,20 +205,24 @@ function FishLib:UpdateLureInventory()
 
 	useinventory = {};
 	lureinventory = {};
+	local b = 0;
 	for _,lure in ipairs(FISHINGLURES) do
 		local id = lure.id;
 		local count = GetItemCount(id);
 		-- does this lure have to be "worn"
 		if ( count > 0 ) then
-			if ( lure.u ) then
-				tinsert(useinventory, lure);
-			elseif ( lure.s <= rawskill ) then
-				if ( not lure.w or FishLib:IsWorn(id)) then
-					tinsert(lureinventory, lure);
-				end
-			end
 			-- get the name so we can check enchants
 			lure.n,_,_,_,_,_,_,_,_,_ = GetItemInfo(id);
+			if ( lure.b > b or lure.w ) then
+				b = lure.b;
+				if ( lure.u ) then
+					tinsert(useinventory, lure);
+				elseif ( lure.s <= rawskill ) then
+					if ( not lure.w or FishLib:IsWorn(id)) then
+						tinsert(lureinventory, lure);
+					end
+				end
+			end
 		end
 	end
 	return lureinventory, useinventory;
@@ -234,22 +239,6 @@ function FishLib:HasBuff(buffName)
 		 return name ~= nil;
 	end
 	-- return nil
-end
-
-function FishLib:FindNextLure(b, state)
-	local n = table.getn(lureinventory);
-	for s=state+1,n,1 do
-		if ( lureinventory[s] ) then
-			local id = lureinventory[s].id;
-			local startTime, _, _ = GetItemCooldown(id);
-			if ( startTime == 0 ) then
-				if ( not b or lureinventory[s].b > b ) then 
-					return s, lureinventory[s];
-				end
-			end
-		end
-	end
-	-- return nil;
 end
 
 local function UseThisLure(lure, b, enchant, skill, level)
@@ -269,6 +258,22 @@ local function UseThisLure(lure, b, enchant, skill, level)
 	return false, 0;
 end
 
+function FishLib:FindNextLure(b, state)
+    local n = table.getn(lureinventory);
+    for s=state+1,n,1 do
+		if ( lureinventory[s] ) then
+			local id = lureinventory[s].id;
+			local startTime, _, _ = GetItemCooldown(id);
+			if ( startTime == 0 ) then
+				if ( not b or lureinventory[s].b > b ) then 
+					return s, lureinventory[s];
+				end
+			end
+		end
+	end
+	-- return nil;
+end
+
 function FishLib:FindBestLure(b, state, usedrinks)
 	local zone, subzone = self:GetZoneInfo();
 	local level = self:GetFishingLevel(zone, subzone);
@@ -277,8 +282,8 @@ function FishLib:FindBestLure(b, state, usedrinks)
 		local skill = rank + modifier;
 		-- don't need this now, LT has the full values
 		-- level = level + 95;		-- for no lost fish
-		self:UpdateLureInventory();
-		if ( skill < level ) then
+		if ( skill <= level ) then
+			self:UpdateLureInventory();
 			-- if drinking will work, then we're done
 			if ( usedrinks and #useinventory > 0 ) then
 				if ( not LastUsed or not self:HasBuff(LastUsed.n) ) then
@@ -320,9 +325,6 @@ function FishLib:FindBestLure(b, state, usedrinks)
 				return #lureinventory, checklure;
 			end
 		end
-		-- return nil;
-	else
-		return self:FindNextLure(b, state);
 	end
 	-- return nil;
 end
@@ -598,13 +600,24 @@ function FishLib:AddSchoolName(name)
 	tinsert(self.SCHOOLS, { name = name, kind = SCHOOL_FISH });
 end
 
+function FishLib:GetMainHandItem(id)
+	local itemLink = GetInventoryItemLink("player", mainhand);
+	if ( not id ) then
+		return itemLink;
+	end
+	_, id, _ = self:SplitFishLink(itemLink);
+	return id;
+end
+
 function FishLib:IsFishingPole(itemLink)
 	if (not itemLink) then
 		-- Get the main hand item texture
-		itemLink = GetInventoryItemLink("player", mainhand);
+		itemLink = self:GetMainHandItem();
 	end
 	if ( itemLink ) then
 		local _,_,_,_,itemtype,subtype,_,_,itemTexture,_ = self:GetItemInfo(itemLink);
+		local _, id, _ = self:SplitFishLink(itemLink);
+
 		self:GetPoleType();
 		if ( not fp_itemtype and itemTexture ) then
 			 -- If there is infact an item in the main hand, and it's texture
@@ -612,9 +625,8 @@ function FishLib:IsFishingPole(itemLink)
 			 itemTexture = string.lower(itemTexture);
 			 if ( string.find(itemTexture, "inv_fishingpole") or
 					string.find(itemTexture, "fishing_journeymanfisher") ) then
-				 local _, id, _ = self:SplitFishLink(itemLink);
 				 -- Make sure it's not "Nat Pagle's Fish Terminator"
-				 if ( id ~= 19944) then
+				 if ( id ~= 19944  ) then
 					 fp_itemtype = itemtype;
 					 fp_subtype = subtype;
 					 return true;
@@ -1167,8 +1179,13 @@ function FishLib:InvokeLuring(id)
 		return;
 	end
 	btn:SetAttribute("type", "item");
-	btn:SetAttribute("item", "item:"..id);
-	btn:SetAttribute("target-slot", mainhand);
+	if ( id ) then
+		btn:SetAttribute("item", "item:"..id);
+		btn:SetAttribute("target-slot", mainhand);
+	else
+		btn:SetAttribute("item", nil);
+		btn:SetAttribute("target-slot", nil);
+	end
 	btn:SetAttribute("spell", nil);
 	btn:SetAttribute("action", nil);
 	btn.postclick = nil;
@@ -1256,7 +1273,7 @@ function FishLib:GetPoleBonus()
 		local hmhe,_,_,_,_,_ = GetWeaponEnchantInfo();
 		if ( hmhe ) then
 			-- IsFishingPole has set mainhand for us
-			local itemLink = GetInventoryItemLink("player", mainhand);
+			local itemLink = self:GetMainHandItem();
 			local _, id, _, enchant = self:SplitLink(itemLink);
 			-- get the raw value of the pole without any temp enchants
 			local pole = self:FishingBonusPoints(id);
