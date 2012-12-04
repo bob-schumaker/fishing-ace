@@ -7,7 +7,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 90000 + tonumber(("$Rev: 720 $"):match("%d+"))
+local MINOR_VERSION = 90000 + tonumber(("$Rev: 732 $"):match("%d+"))
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -1375,25 +1375,30 @@ end
 -- Find out where the player is. Based on code from Astrolabe and wowwiki notes
 function FishLib:GetCurrentPlayerPosition()
 	local x, y = GetPlayerMapPosition("player");
+	local lC, lZ = GetCurrentMapContinent(), GetCurrentMapZone();
 	-- if the current location is 0,0 we need to call SetMapToCurrentZone()
 	if ( x <= 0 and y <= 0 ) then
 		-- find out where we are now
-		local lC, lZ = GetCurrentMapContinent(), GetCurrentMapZone();
 		SetMapToCurrentZone();
 		-- if we haven't changed zones yet, the zoom is incorrect
 		SetMapZoom(GetCurrentMapContinent());
-		x, y = GetPlayerMapPosition("player");
-		if ( x <= 0 and y <= 0 ) then
-			-- we are in an instance or otherwise off the continent map
-			return;
-		end
+
 		local C, Z = GetCurrentMapContinent(), GetCurrentMapZone();
+		x, y = GetPlayerMapPosition("player");
+
+		-- put everything back, if we need to
 		if ( C ~= lC or Z ~= lZ ) then
 			SetMapZoom(lC, lZ); --set map zoom back to what it was before
 		end
-		return C, Z, x, y;
+
+		if ( x <= 0 and y <= 0 ) then
+			-- we are in an instance or otherwise off the continent map
+			return C, Z, 0, 0;
+		else
+			return C, Z, x, y;
+		end
 	end
-	return GetCurrentMapContinent(), GetCurrentMapZone(), x, y;
+	return lC, lZ, x, y;
 end
 
 -- translation support functions

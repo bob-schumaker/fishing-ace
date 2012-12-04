@@ -1,6 +1,6 @@
 ## Interface: 50100
 ## Title: Fishing Ace! |cff7fff7f -Ace3-|r
-## Version: 0.7.1
+## Version: 0.7.2
 ## Notes: Simple right click casting.
 ## Notes-zhCN: 快速双击钓鱼。
 ## Notes-zhTW: 快速雙擊釣魚。
