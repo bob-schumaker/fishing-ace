@@ -7,7 +7,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 90000 + tonumber(("$Rev: 746 $"):match("%d+"))
+local MINOR_VERSION = 90000 + tonumber(("$Rev: 762 $"):match("%d+"))
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -354,6 +354,8 @@ if ( not fishlibframe) then
 	fishlibframe:RegisterEvent("UNIT_INVENTORY_CHANGED");
 	fishlibframe:RegisterEvent("UNIT_SPELLCAST_CHANNEL_START");
 	fishlibframe:RegisterEvent("UNIT_SPELLCAST_CHANNEL_STOP");
+	fishlibframe:RegisterEvent("EQUIPMENT_SWAP_FINISHED");
+	fishlibframe:RegisterEvent("ITEM_LOCK_CHANGED");	
 end
 
 fishlibframe.fl = FishLib;
@@ -363,11 +365,13 @@ fishlibframe:SetScript("OnEvent", function(self, event, ...)
 	if ( event == "UPDATE_CHAT_WINDOWS" ) then
 		canCreateFrame = true;
 		self:UnregisterEvent(event);
-	elseif ( event == "SKILL_LINES_CHANGED" or
-		( event == "UNIT_INVENTORY_CHANGED" and arg1 == "player" ) ) then
-		if (self.fl) then
-			self.fl:UpdateLureInventory();
-		end
+	elseif ( event == "UNIT_INVENTORY_CHANGED" and arg1 == "player" ) then
+		self.fl:UpdateLureInventory();
+		-- we can't actually rely on EQUIPMENT_SWAP_FINISHED, it appears
+		self.fl:ForceGearCheck();
+	elseif ( event == "SKILL_LINES_CHANGED" or event == "ITEM_LOCK_CHANGED" or event == "EQUIPMENT_SWAP_FINISHED" ) then
+		-- Did something we're wearing change?
+		self.fl:ForceGearCheck();
 	elseif ( event == "CHAT_MSG_SKILL" ) then
 		self.fl.caughtSoFar = 0;
 	elseif ( event == "LOOT_OPENED" ) then
@@ -376,7 +380,7 @@ fishlibframe:SetScript("OnEvent", function(self, event, ...)
 		end
 	elseif ( event == "UNIT_SPELLCAST_CHANNEL_START" or event == "UNIT_SPELLCAST_CHANNEL_STOP" ) then
 		if (arg1 ~= "player" ) then
-			return;
+			self.fl:UpdateLureInventory();
 		end
 	end
 end);
@@ -649,16 +653,29 @@ function FishLib:IsFishingPole(itemLink)
 	return false;
 end
 
+FishLib.gearcheck = true;
+FishLib.hasgear = false;
+
+function FishLib:ForceGearCheck()
+	self.gearcheck = true;
+	self.hasgear = false;
+end
+
 function FishLib:IsFishingGear()
-	if (self:IsFishingPole()) then
-		return true;
-	end
-	for i=1,16,1 do
-		if (self:FishingBonusPoints(slotinfo[i].id, 1) > 0) then
-			return true;
+	if ( self.gearcheck ) then
+		if (self:IsFishingPole()) then
+			self.hasgear = true;
 		end
+		for i=1,16,1 do
+			if ( not self.hasgear ) then
+				if (self:FishingBonusPoints(slotinfo[i].id, 1) > 0) then
+					self.hasgear = true;
+				end
+			end
+		end
+		self.gearcheck = false;
 	end
-	-- return nil;
+	return self.hasgear;
 end
 
 function FishLib:IsFishingReady(partial)
