@@ -115,6 +115,13 @@ function FAOptions(uiType, uiName)
 				arg = "action",
 				order = 5,
 			},
+			bobber = {
+				type = 'toggle',
+				name = L["Watch Bobber"],
+				desc = L["WatchBobberMsg"],
+				arg = "bobber",
+				order = 6,
+			},
 			volume = {
 				type = 'range',
 				name = L["Volume"],
@@ -122,7 +129,7 @@ function FAOptions(uiType, uiName)
 				arg = "volume",
 				min = 0,
 				max = 100,
-				order = 6,
+				order = 7,
 			},
 			castingkey = {
 				type = "select",
@@ -135,7 +142,7 @@ function FAOptions(uiType, uiName)
 					CTRL_KEY_TEXT = "control",
 					SHIFT_KEY_TEXT = "shift",
 				},
-				order = 7,
+				order = 8,
 			},
 		}
 	}
@@ -206,6 +213,7 @@ function FishingAce:OnInitialize()
 			partial = false,
 			volume = 100,
 			action = false,
+			bobber = false,
 			castingkey = NONE,
 		},
 	}
@@ -287,6 +295,7 @@ local function EnhanceFishingSounds(self, enhance)
 			end
 		end
 	end
+	FL:WatchBobber(self.db.profile.bobber)
 end
 
 local function StartFishingMode(self)
@@ -299,6 +308,7 @@ local function StartFishingMode(self)
 		self.startedFishing = GetTime()
 		EnhanceFishingSounds(self, true)
 	end
+	FL:WatchBobber(false)
 end
 
 local function StopFishingMode(self)

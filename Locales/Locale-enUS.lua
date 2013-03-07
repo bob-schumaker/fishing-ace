@@ -30,6 +30,9 @@ if L then
 	L["Partial Gear"] = "Partial Gear"
 	L["PartialGearMsg"] = "If set, cast if any piece of fishing gear is equipped."
 
+	L["Watch Bobber"] = true
+	L["WatchBobberMsg"] = "If set, do not cast if the cursor is over the fishing bobber."
+
 	L["FishingAce is active, easy cast disabled."] = true
 	L["FishingAce on standby, easy cast enabled."] = true
 end
