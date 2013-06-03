@@ -1354,7 +1354,7 @@ function FishLib:GetFishingOutfitItems(wearing, nopole)
 			itemtable = GetInventoryItemsForSlot(slotid, itemtable);
 			for location,id in pairs(itemtable) do
 				local player, bank, bags, slot, bag = EquipmentManager_UnpackLocation(location);
-				if ( bags ) then
+				if ( bags and slot and bag ) then
 					link = GetContainerItemLink(bag, slot);
 				else
 					link = nil;
