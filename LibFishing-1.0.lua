@@ -1,13 +1,13 @@
 ﻿--[[
-Name: FishLib-1.0
+Name: LibFishing-1.0
 Maintainers: Sutorix <sutorix@hotmail.com>
-Description: A library with common routines used by Fishing Buddy and Fishing Ace.
+Description: A library with fishing support routines used by Fishing Buddy, Fishing Ace and FB_Broker.
 Copyright (c) by Bob Schumaker
 Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" License
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 90000 + tonumber(("$Rev: 762 $"):match("%d+"))
+local MINOR_VERSION = 90000 + tonumber(("$Rev: 791 $"):match("%d+"))
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -1353,7 +1353,7 @@ function FishLib:GetFishingOutfitItems(wearing, nopole)
 			wipe(itemtable);
 			itemtable = GetInventoryItemsForSlot(slotid, itemtable);
 			for location,id in pairs(itemtable) do
-				local player, bank, bags, slot, bag = EquipmentManager_UnpackLocation(location);
+				local player, bank, bags, void, slot, bag = EquipmentManager_UnpackLocation(location);
 				if ( bags and slot and bag ) then
 					link = GetContainerItemLink(bag, slot);
 				else
