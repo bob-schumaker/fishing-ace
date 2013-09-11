@@ -7,7 +7,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 90000 + tonumber(("$Rev: 791 $"):match("%d+"))
+local MINOR_VERSION = 90000 + tonumber(("$Rev: 813 $"):match("%d+"))
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -16,9 +16,12 @@ if not FishLib then
 	return
 end
 
-if (oldLib) then
-	for k,v in oldLib do
-		FishLib.k = v;
+-- keep the old stuff, in case we want some of the settings.
+if oldLib then
+	oldLib = {}
+	for k, v in pairs(FishLib) do
+		FishLib[k] = nil
+		oldLib[k] = v
 	end
 end
 
@@ -339,9 +342,22 @@ function FishLib:FindBestLure(b, state, usedrinks)
 	-- return nil;
 end
 
+if oldlib then
+	FishLib.caughtSoFar = oldlib.caughtSoFar or 0;
+	FishLib.gearcheck = oldlib.gearcheck;
+	FishLib.hasgear = oldlib.hasgear;
+	FishLib.FindFishID = oldlib.FindFishID;
+	FishLib.BOBBER_NAME = oldlib.BOBBER_NAME;
+	FishLib.watchBobber = oldlib.watchBobber;
+	FishLib.ActionBarID = oldlib.ActionBarID;
+else
+	FishLib.caughtSoFar = 0;
+	FishLib.gearcheck = true;
+	FishLib.hasgear = false;
+end
+
 -- Handle events we care about
 local canCreateFrame = false;
-FishLib.caughtSoFar = 0;
 
 local FISHLIBFRAMENAME="FishLibFrame";
 local fishlibframe = getglobal(FISHLIBFRAMENAME);
@@ -388,67 +404,61 @@ fishlibframe:Show();
 
 -- set up a table of slot mappings for looking up item information
 local slotinfo = {
-	[0] = { name = "AmmoSlot", tooltip = AMMOSLOT },
-	[1] = { name = "HeadSlot", tooltip = HEADSLOT },
-	[2] = { name = "NeckSlot", tooltip = NECKSLOT },
-	[3] = { name = "ShoulderSlot", tooltip = SHOULDERSLOT },
-	[4] = { name = "BackSlot", tooltip = BACKSLOT },
-	[5] = { name = "ChestSlot", tooltip = CHESTSLOT },
-	[6] = { name = "ShirtSlot", tooltip = SHIRTSLOT },
-	[7] = { name = "TabardSlot", tooltip = TABARDSLOT },
-	[8] = { name = "WristSlot", tooltip = WRISTSLOT },
-	[9] = { name = "HandsSlot", tooltip = HANDSSLOT },
-	[10] = { name = "WaistSlot", tooltip = WAISTSLOT },
-	[11] = { name = "LegsSlot", tooltip = LEGSSLOT },
-	[12] = { name = "FeetSlot", tooltip = FEETSLOT },
-	[13] = { name = "Finger0Slot", tooltip = FINGER0SLOT },
-	[14] = { name = "Finger1Slot", tooltip = FINGER1SLOT },
-	[15] = { name = "Trinket0Slot", tooltip = TRINKET0SLOT },
-	[16] = { name = "Trinket1Slot", tooltip = TRINKET1SLOT },
-	[17] = { name = "MainHandSlot", tooltip = MAINHANDSLOT },
-	[18] = { name = "SecondaryHandSlot", tooltip = SECONDARYHANDSLOT },
+	[1] = { name = "HeadSlot", tooltip = HEADSLOT, id = INVSLOT_HEAD },
+	[2] = { name = "NeckSlot", tooltip = NECKSLOT, id = INVSLOT_NECK },
+	[3] = { name = "ShoulderSlot", tooltip = SHOULDERSLOT, id = INVSLOT_SHOULDER },
+	[4] = { name = "BackSlot", tooltip = BACKSLOT, id = INVSLOT_BACK },
+	[5] = { name = "ChestSlot", tooltip = CHESTSLOT, id = INVSLOT_CHEST },
+	[6] = { name = "ShirtSlot", tooltip = SHIRTSLOT, id = INVSLOT_BODY },
+	[7] = { name = "TabardSlot", tooltip = TABARDSLOT, id = INVSLOT_TABARD },
+	[8] = { name = "WristSlot", tooltip = WRISTSLOT, id = INVSLOT_WRIST },
+	[9] = { name = "HandsSlot", tooltip = HANDSSLOT, id = INVSLOT_HAND },
+	[10] = { name = "WaistSlot", tooltip = WAISTSLOT, id = INVSLOT_WAIST },
+	[11] = { name = "LegsSlot", tooltip = LEGSSLOT, id = INVSLOT_LEGS },
+	[12] = { name = "FeetSlot", tooltip = FEETSLOT, id = INVSLOT_FEET },
+	[13] = { name = "Finger0Slot", tooltip = FINGER0SLOT, id = INVSLOT_FINGER1 },
+	[14] = { name = "Finger1Slot", tooltip = FINGER1SLOT, id = INVSLOT_FINGER2 },
+	[15] = { name = "Trinket0Slot", tooltip = TRINKET0SLOT, id = INVSLOT_TRINKET1 },
+	[16] = { name = "Trinket1Slot", tooltip = TRINKET1SLOT, id = INVSLOT_TRINKET2 },
+	[17] = { name = "MainHandSlot", tooltip = MAINHANDSLOT, id = INVSLOT_MAINHAND },
+	[18] = { name = "SecondaryHandSlot", tooltip = SECONDARYHANDSLOT, id = INVSLOT_OFFHAND },
 }
-for i=0,18,1 do
-	local sn = slotinfo[i].name;
-	slotinfo[i].id, _ = GetInventorySlotInfo(sn);
-end
-local mainhand = slotinfo[17].id;
 
 -- A map of item types to locations
 local slotmap = {
-	["INVTYPE_AMMO"] = { 0 },
-	["INVTYPE_HEAD"] = { 1 },
-	["INVTYPE_NECK"] = { 2 },
-	["INVTYPE_SHOULDER"] = { 3 },
-	["INVTYPE_BODY"] = { 4 },
-	["INVTYPE_CHEST"] = { 5 },
-	["INVTYPE_ROBE"] = { 5 },
-	["INVTYPE_CLOAK"] = { 5 },
-	["INVTYPE_WAIST"] = { 7 },
-	["INVTYPE_LEGS"] = { 8 },
-	["INVTYPE_FEET"] = { 9 },
-	["INVTYPE_WRIST"] = { 10 },
-	["INVTYPE_HAND"] = { 11 },
-	["INVTYPE_FINGER"] = { 12,13 },
-	["INVTYPE_TRINKET"] = { 14,15 },
-	["INVTYPE_WEAPON"] = { 16,17 },
-	["INVTYPE_SHIELD"] = { 17 },
-	["INVTYPE_2HWEAPON"] = { 16 },
-	["INVTYPE_WEAPONMAINHAND"] = { 16 },
-	["INVTYPE_WEAPONOFFHAND"] = { 17 },
-	["INVTYPE_HOLDABLE"] = { 17 },
-	["INVTYPE_RANGED"] = { 18 },
-	["INVTYPE_THROWN"] = { 18 },
-	["INVTYPE_RANGEDRIGHT"] = { 18 },
-	["INVTYPE_RELIC"] = { 18 },
-	["INVTYPE_TABARD"] = { 19 },
+	["INVTYPE_AMMO"] = { INVSLOT_AMMO },
+	["INVTYPE_HEAD"] = { INVSLOT_HEAD },
+	["INVTYPE_NECK"] = { INVSLOT_NECK },
+	["INVTYPE_SHOULDER"] = { INVSLOT_SHOULDER },
+	["INVTYPE_BODY"] = { INVSLOT_BODY },
+	["INVTYPE_CHEST"] = { INVSLOT_CHEST },
+	["INVTYPE_ROBE"] = { INVSLOT_CHEST },
+	["INVTYPE_CLOAK"] = { INVSLOT_CHEST },
+	["INVTYPE_WAIST"] = { INVSLOT_WAIST },
+	["INVTYPE_LEGS"] = { INVSLOT_LEGS },
+	["INVTYPE_FEET"] = { INVSLOT_FEET },
+	["INVTYPE_WRIST"] = { INVSLOT_WRIST },
+	["INVTYPE_HAND"] = { INVSLOT_HAND },
+	["INVTYPE_FINGER"] = { INVSLOT_FINGER1,INVSLOT_FINGER2 },
+	["INVTYPE_TRINKET"] = { INVSLOT_TRINKET1,INVSLOT_TRINKET2 },
+	["INVTYPE_WEAPON"] = { INVSLOT_MAINHAND,INVSLOT_OFFHAND },
+	["INVTYPE_SHIELD"] = { INVSLOT_OFFHAND },
+	["INVTYPE_2HWEAPON"] = { INVSLOT_MAINHAND },
+	["INVTYPE_WEAPONMAINHAND"] = { INVSLOT_MAINHAND },
+	["INVTYPE_WEAPONOFFHAND"] = { INVSLOT_OFFHAND },
+	["INVTYPE_HOLDABLE"] = { INVSLOT_OFFHAND },
+	["INVTYPE_RANGED"] = { INVSLOT_RANGED },
+	["INVTYPE_THROWN"] = { INVSLOT_RANGED },
+	["INVTYPE_RANGEDRIGHT"] = { INVSLOT_RANGED },
+	["INVTYPE_RELIC"] = { INVSLOT_RANGED },
+	["INVTYPE_TABARD"] = { INVSLOT_TABARD },
 	["INVTYPE_BAG"] = { 20,21,22,23 },
 	["INVTYPE_QUIVER"] = { 20,21,22,23 }, 
 	[""] = { },
 };
 
 function FishLib:GetSlotInfo()
-	return slotinfo[17].id, slotinfo[18].id, slotinfo;
+	return INVSLOT_MAINHAND, INVSLOT_OFFHAND, slotinfo;
 end
 
 function FishLib:GetSlotMap()
@@ -615,7 +625,7 @@ function FishLib:AddSchoolName(name)
 end
 
 function FishLib:GetMainHandItem(id)
-	local itemLink = GetInventoryItemLink("player", mainhand);
+	local itemLink = GetInventoryItemLink("player", INVSLOT_MAINHAND);
 	if ( not id ) then
 		return itemLink;
 	end
@@ -652,9 +662,6 @@ function FishLib:IsFishingPole(itemLink)
 	end
 	return false;
 end
-
-FishLib.gearcheck = true;
-FishLib.hasgear = false;
 
 function FishLib:ForceGearCheck()
 	self.gearcheck = true;
@@ -772,7 +779,6 @@ end
 local ACTIONDOUBLEWAIT = 0.4;
 local MINACTIONDOUBLECLICK = 0.05;
 
-FishLib.watchBobber = false;
 function FishLib:WatchBobber(flag)
 	self.watchBobber = flag;
 end
@@ -1208,7 +1214,7 @@ function FishLib:InvokeLuring(id)
 	btn:SetAttribute("type", "item");
 	if ( id ) then
 		btn:SetAttribute("item", "item:"..id);
-		btn:SetAttribute("target-slot", mainhand);
+		btn:SetAttribute("target-slot", INVSLOT_MAINHAND);
 	else
 		btn:SetAttribute("item", nil);
 		btn:SetAttribute("target-slot", nil);
@@ -1296,7 +1302,7 @@ end
 function FishLib:GetPoleBonus()
 	if (self:IsFishingPole()) then
 		-- get the total bonus for the pole
-		local total = self:FishingBonusPoints(mainhand, true);
+		local total = self:FishingBonusPoints(INVSLOT_MAINHAND, true);
 		local hmhe,_,_,_,_,_ = GetWeaponEnchantInfo();
 		if ( hmhe ) then
 			-- IsFishingPole has set mainhand for us
@@ -1319,6 +1325,12 @@ function FishLib:GetOutfitBonus()
 	for i=1,16,1 do
 		bonus = bonus + self:FishingBonusPoints(slotinfo[i].id, 1);
 	end
+	-- Blizz seems to have capped this at 50, plus there seems
+	-- to be a maximum of +5 in enchants. Need to do some more work
+	-- to verify.
+	-- if (bonus > 50) then
+	-- 	bonus = 50;
+	-- end
 	local pole, lure = self:GetPoleBonus();
 	return bonus + pole, lure;
 end
@@ -1332,7 +1344,7 @@ function FishLib:GetFishingOutfitItems(wearing, nopole)
 	local itemtable = {};
 	for invslot=1,17,1 do
 		local slotid = slotinfo[invslot].id;
-		local ismain = (slotid == mainhand);
+		local ismain = (slotid == INVSLOT_MAINHAND);
 		if ( not nopole or not ismain ) then
 			local slotname = slotinfo[invslot].name;
 			local maxb = -1;
