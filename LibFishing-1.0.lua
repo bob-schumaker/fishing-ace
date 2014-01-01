@@ -7,7 +7,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 90000 + tonumber(("$Rev: 813 $"):match("%d+"))
+local MINOR_VERSION = 90000 + tonumber(("$Rev: 845 $"):match("%d+"))
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -543,8 +543,7 @@ function FishLib:GetItemInfo(link)
 	return itemName, itemLink, itemRarity, itemMinLevel, itemType, itemSubType, itemStackCount, itemEquipLoc, itemTexture, itemLevel, itemSellPrice;
 end
 
-function FishLib:IsLinkableItem(item)
-	local link = "item:"..item;
+function FishLib:IsLinkableItem(link)
 	local n,l,_,_,_,_,_,_ = self:GetItemInfo(link);
 	return ( n and l );
 end
@@ -1173,16 +1172,63 @@ function FishLib:CreateSAButton()
 		btn = CreateFrame("Button", SABUTTONNAME, holder, "SecureActionButtonTemplate");
 		btn.holder = holder;
 		btn:EnableMouse(true);
-		btn:RegisterForClicks("RightButtonUp");
+		btn:RegisterForClicks(nil);
 		btn:Show();
 
 		holder:SetPoint("LEFT", UIParent, "RIGHT", 10000, 0);
 		holder:SetFrameStrata("LOW");
 		holder:Hide();
 	end
+	if (not self.buttonevent) then
+		self.buttonevent = "RightButtonUp";
+	end
 	btn:SetScript("PostClick", ClickHandled);
+	btn:RegisterForClicks(self.buttonevent);
 	self.sabutton = btn;
 	btn.fl = self;
+end
+
+FishLib.MOUSE1 = "RightButtonUp";
+FishLib.MOUSE2 = "Button4Up";
+FishLib.MOUSE3 = "Button5Up";
+FishLib.CastButton = {};
+FishLib.CastButton[FishLib.MOUSE1] = "RightButton";
+FishLib.CastButton[FishLib.MOUSE2] = "Button4";
+FishLib.CastButton[FishLib.MOUSE3] = "Button5";
+FishLib.CastKey = {};
+FishLib.CastKey[FishLib.MOUSE1] = "BUTTON2";
+FishLib.CastKey[FishLib.MOUSE2] = "BUTTON4";
+FishLib.CastKey[FishLib.MOUSE3] = "BUTTON5";
+
+function FishLib:GetSAMouseEvent()
+	if (not self.buttonevent) then
+		self.buttonevent = "RightButtonUp";
+	end
+	return self.buttonevent;
+end
+
+function FishLib:GetSAMouseButton()
+	return self.CastButton[self:GetSAMouseEvent()];
+end
+
+function FishLib:GetSAMouseKey()
+	return self.CastKey[self:GetSAMouseEvent()];
+end
+
+function FishLib:SetSAMouseEvent(buttonevent)
+	if (not buttonevent) then
+		buttonevent = "RightButtonUp";
+	end
+	if (self.CastButton[buttonevent]) then
+		self.buttonevent = buttonevent;
+		local btn = getglobal(SABUTTONNAME);
+		if ( btn ) then
+			btn:RegisterForClicks(nil);		
+			btn:RegisterForClicks(self.buttonevent);		
+		end
+		return true;
+	end
+	-- return nil;
 end
 
 function FishLib:InvokeFishing(useaction)
@@ -1193,13 +1239,13 @@ function FishLib:InvokeFishing(useaction)
 	local _, name = self:GetFishingSkillInfo();
 	local findid = self:GetFishingActionBarID();	  
 	if ( not useaction or not findid ) then
-	  btn:SetAttribute("type", "spell");
-	  btn:SetAttribute("spell", name);
-	  btn:SetAttribute("action", nil);
+		btn:SetAttribute("type", "spell");
+		btn:SetAttribute("spell", name);
+		btn:SetAttribute("action", nil);
 	else
-	  btn:SetAttribute("type", "action");
-	  btn:SetAttribute("action", findid);
-	  btn:SetAttribute("spell", nil);
+		btn:SetAttribute("type", "action");
+		btn:SetAttribute("action", findid);
+		btn:SetAttribute("spell", nil);
 	end
 	btn:SetAttribute("item", nil);
 	btn:SetAttribute("target-slot", nil);
@@ -1229,11 +1275,20 @@ function FishLib:OverrideClick(postclick)
 	if ( not btn ) then
 		return;
 	end
+	local buttonkey = self:GetSAMouseKey();
 	fishlibframe.fl = self;
 	btn.fl = self;
 	btn.postclick = postclick;
-	SetOverrideBindingClick(btn, true, "BUTTON2", SABUTTONNAME);
+	SetOverrideBindingClick(btn, true, buttonkey, SABUTTONNAME);
 	btn.holder:Show();
+end
+
+function FishLib:ClickSAButton()
+	local btn = self.sabutton;
+	if ( not btn ) then
+		return;
+	end
+	btn:Click(self:GetSAMouseButton());
 end
 
 -- Taken from wowwiki tooltip handling suggestions
@@ -1390,6 +1445,76 @@ function FishLib:GetFishingOutfitItems(wearing, nopole)
 		end
 	end
 	return outfit;
+end
+
+function FishLib:GetBagItemStats(bag, slot)
+	local link;
+	local c, i, n;
+	if ( bag ) then
+		link = GetContainerItemLink (bag,slot);
+	else
+		link = GetInventoryItemLink("player", slot);
+	end
+	if (link) then
+		c, i, n = self:SplitFishLink(link);
+	end
+	return c, i, n;
+end
+
+-- look in a particular bag
+function FishLib:CheckThisBag(bag, id, skipcount)
+	-- get the number of slots in the bag (0 if no bag)
+	local numSlots = GetContainerNumSlots(bag);
+	if (numSlots > 0) then
+		-- check each slot in the bag
+		for slot=1, numSlots do
+			local c, i, n = self:GetBagItemStats(bag, slot);
+			if ( i and id == i ) then
+				if ( skipcount == 0 ) then
+					return slot, skipcount;
+				end
+				skipcount = skipcount - 1;
+			end
+		end
+	end
+	return nil, skipcount;
+end
+
+-- look for the item anywhere we can find it, skipping if we're looking
+-- for more than one
+function FishLib:FindThisItem(id, skipcount)
+	if ( not id ) then
+		return nil,nil;
+	end
+	local skipcount = skipcount or 0;
+	-- force id to be a number
+	local n,l,_,_,_,_,_,_ = GetItemInfo(id);
+	if (not n) then
+		n,l,_,_,_,_,_,_ = GetItemInfo("item:"..id);
+	end
+	_, id, _ = self:SplitFishLink(l);
+	-- check each of the bags on the player
+	for bag = BACKPACK_CONTAINER, NUM_BAG_SLOTS do
+		local slot;
+		slot, skipcount = self:CheckThisBag(bag, id, skipcount);
+		if ( slot ) then
+			return bag, slot;
+		end
+	end
+
+	local _,_,slotnames = self:GetSlotInfo();
+	for _,si in ipairs(slotnames) do
+		local slot = si.id;
+		local c, i, n = self:GetBagItemStats(nil, slot);
+		if ( i and id == i ) then
+			if ( skipcount == 0 ) then
+				return nil, slot;
+			end
+			skipcount = skipcount - 1;
+		end
+	end
+
+	-- return nil, nil;
 end
 
 -- Is this item openable?
