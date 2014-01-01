@@ -27,6 +27,9 @@ if L then
 	L["Casting Key"] = "Casting Key"
 	L["CastingKeyMsg"] = "Set to a modifier key to force a fishing cast, even when no pole equipped."
 
+	L["Mouse Button"] = "Mouse Button"
+	L["MouseButtonMsg"] = "Choose which mouse button to use for casting."
+	
 	L["Partial Gear"] = "Partial Gear"
 	L["PartialGearMsg"] = "If set, cast if any piece of fishing gear is equipped."
 

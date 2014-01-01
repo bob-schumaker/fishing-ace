@@ -72,6 +72,11 @@ local FISHINGLURES = {
 
 local AddingLure = false
 
+local ButtonMap = {};
+ButtonMap["right"] = "RightButtonUp";
+ButtonMap["button4"] = "Button4Up";
+ButtonMap["button5"] = "Button5Up";
+
 function FAOptions(uiType, uiName)
 	local options = {
 		type='group',
@@ -138,11 +143,28 @@ function FAOptions(uiType, uiName)
 				style = "dropdown",
 				arg = "castingkey",
 				values = {
-					NONE = "none",
-					CTRL_KEY_TEXT = "control",
-					SHIFT_KEY_TEXT = "shift",
+					none = NONE,
+					control = CTRL_KEY_TEXT,
+					shift = SHIFT_KEY_TEXT,
 				},
 				order = 8,
+			},
+			button = {
+				type = "select",
+				desc = L["MouseButtonMsg"],
+				name = L["Mouse Button"],
+				style = "dropdown",
+				arg = "button",
+				values = {
+					right = KEY_BUTTON2,
+					button4 = KEY_BUTTON4,
+					button5 = KEY_BUTTON5,
+				},
+				set = function(info, val)
+					FL:SetSAMouseEvent(ButtonMap[val])
+					db[info[#info]] = val
+				end,
+				order = 9,
 			},
 		}
 	}
@@ -214,7 +236,8 @@ function FishingAce:OnInitialize()
 			volume = 100,
 			action = false,
 			bobber = false,
-			castingkey = NONE,
+			castingkey = "none",
+			button = "right",
 		},
 	}
     self.db = LibStub("AceDB-3.0"):New("FishingAceDB", defaults, "Default")
@@ -233,19 +256,21 @@ function FishingAce:OnInitialize()
 	config:CreateChatCommand("fa", ADDONNAME)
 
     FL:CreateSAButton()
+	FL:SetSAMouseEvent(ButtonMap[self.db.profile.button])
     FL:WatchBobber(false)
 end
 
 -- handle option keys for enabling casting
 local key_actions = {
-	["none"] = function() return false; end,
-	["shift"] = function() return IsShiftKeyDown(); end,
-	["control"] = function() return IsControlKeyDown(); end,
+	["none"] = function(mouse) return mouse ~= "right"; end,
+	["shift"] = function(mouse) return IsShiftKeyDown(); end,
+	["control"] = function(mouse) return IsControlKeyDown(); end,
 }
-local function CastingKeys(self)
-	local setting = self.db.profile.castingkey;
+local function CastingKeys()
+	local setting = db.castingkey;
+	local mouse = db.button;
 	if ( setting and key_actions[setting] ) then
-		return key_actions[setting]();
+		return key_actions[setting](mouse);
 	else
 		return false;
 	end
@@ -254,7 +279,7 @@ end
 local function HijackCheck()
 	local self = FishingAce;
 	if ( not InCombatLockdown() and
-			(CastingKeys(self) or
+			(CastingKeys() or
 			 FL:IsFishingReady(self.db.profile.partial)) ) then
 		return true
 	end
@@ -354,17 +379,15 @@ end
 local function WF_OnMouseDown(...)
 	-- Only steal 'right clicks' (self is arg #1!)
 	local button = select(2, ...)
-	if ( button == "RightButton" and HijackCheck() ) then
-		if ( FL:CheckForDoubleClick() ) then
-			-- We're stealing the mouse-up event, make sure we exit MouseLook
-			if ( IsMouselooking() ) then
-				MouselookStop()
-			end
-			if ( not SetupLure() ) then
-				FL:InvokeFishing(FishingAce.db.profile.action)
-			end
-			FL:OverrideClick(HideAwayAll)
+	if ( FL:CheckForDoubleClick(button) and HijackCheck() ) then
+		-- We're stealing the mouse-up event, make sure we exit MouseLook
+		if ( IsMouselooking() ) then
+			MouselookStop()
 		end
+		if ( not SetupLure() ) then
+			FL:InvokeFishing(FishingAce.db.profile.action)
+		end
+		FL:OverrideClick(HideAwayAll)
 	end
 end
 

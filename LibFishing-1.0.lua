@@ -783,7 +783,10 @@ function FishLib:WatchBobber(flag)
 end
 
 -- look for double clicks
-function FishLib:CheckForDoubleClick()
+function FishLib:CheckForDoubleClick(button)
+	if (button and button ~= self:GetSAMouseButton()) then
+		return false;
+	end
 	if ( not LootFrame:IsShown() and self.lastClickTime ) then
 		local pressTime = GetTime();
 		local doubleTime = pressTime - self.lastClickTime;
