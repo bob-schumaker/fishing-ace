@@ -357,7 +357,7 @@ local function FishingMode(self)
 end
 
 local function SetupLure()
-	if ( not AddingLure ) then
+	if ( not AddingLure and FL:IsFishingPole() ) then
 		if ( FishingAce.db.profile.lure ) then
             local pole, tempenchant = FL:GetPoleBonus()
             local state, bestlure = FL:FindBestLure(tempenchant, 0, true)
