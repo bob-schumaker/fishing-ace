@@ -7,7 +7,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 90000 + tonumber(("$Rev: 848 $"):match("%d+"))
+local MINOR_VERSION = 90000 + tonumber(("$Rev: 853 $"):match("%d+"))
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -70,16 +70,15 @@ function FishLib:GetFishingSkillInfo()
 end
 
 -- get our current fishing skill level
-function GetCurrentSkill(self)
+function FishLib:GetCurrentSkill()
 	local _, _, _, fishing, _, _ = GetProfessions();
 	if (fishing) then
 		local name, _, rank, skillmax, _, _, _, mods = GetProfessionInfo(fishing);
-		local _, lure = FishLib:GetPoleBonus();
+		local _, lure = self:GetPoleBonus();
 		return rank, mods, skillmax, lure;
 	end
 	return 0, 0, 0;
 end
-FishLib.GetCurrentSkill = GetCurrentSkill;
 
 -- Lure library
 local FISHINGLURES = {
@@ -214,7 +213,7 @@ end
 local useinventory = {};
 local lureinventory = {};
 function FishLib:UpdateLureInventory()
-	local rawskill, _, _, _ = GetCurrentSkill();
+	local rawskill, _, _, _ = self:GetCurrentSkill();
 
 	useinventory = {};
 	lureinventory = {};
@@ -363,6 +362,8 @@ local FISHLIBFRAMENAME="FishLibFrame";
 local fishlibframe = getglobal(FISHLIBFRAMENAME);
 if ( not fishlibframe) then
 	fishlibframe = CreateFrame("Frame", FISHLIBFRAMENAME);
+	fishlibframe:RegisterEvent("PLAYER_ENTERING_WORLD");
+	fishlibframe:RegisterEvent("PLAYER_LEAVING_WORLD");
 	fishlibframe:RegisterEvent("UPDATE_CHAT_WINDOWS");
 	fishlibframe:RegisterEvent("LOOT_OPENED");
 	fishlibframe:RegisterEvent("CHAT_MSG_SKILL");
@@ -395,9 +396,17 @@ fishlibframe:SetScript("OnEvent", function(self, event, ...)
 			self.fl.caughtSoFar = self.fl.caughtSoFar + 1;
 		end
 	elseif ( event == "UNIT_SPELLCAST_CHANNEL_START" or event == "UNIT_SPELLCAST_CHANNEL_STOP" ) then
-		if (arg1 ~= "player" ) then
+		if (arg1 == "player" ) then
 			self.fl:UpdateLureInventory();
 		end
+	elseif ( event == "PLAYER_ENTERING_WORLD" ) then
+		self:RegisterEvent("ITEM_LOCK_CHANGED")
+		self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
+		self:RegisterEvent("SPELLS_CHANGED")
+	elseif ( event == "PLAYER_LEAVING_WORLD" ) then
+		self:UnregisterEvent("ITEM_LOCK_CHANGED")
+		self:UnregisterEvent("PLAYER_EQUIPMENT_CHANGED")
+		self:UnregisterEvent("SPELLS_CHANGED")
 	end
 end);
 fishlibframe:Show();
