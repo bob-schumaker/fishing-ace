@@ -182,13 +182,7 @@ local FISHINGLURES = {
 -- we may have to treat "Heat-Treated Spinning Lure" differently someday
 table.sort(FISHINGLURES,
 	function(a,b)
-		if (a.w and b.w) then
-			return a.d < b.d;
-		elseif (a.w) then
-			return true;
-		elseif (b.w) then
-			return false;
-		elseif ( a.b == b.b ) then
+		if ( a.b == b.b ) then
 			return a.d < b.d;
 		else
 			return a.b < b.b;
@@ -880,19 +874,15 @@ function FishLib:GetBaseZone(zname)
 		return FishLib.UNKNOWN;
 	end
 
-	local continent = GetCurrentMapContinent();
-	local uname = LT:GetUniqueZoneNameForLookup(zname, continent)
-
-	if (uname) then
-		return uname;
-	end
-
-	if (zname and not BZ[zname] ) then
+	if (zname and not BZ[zname] and BZR[zname]) then
 		zname = BZR[zname];
 	end
 
 	if (not zname) then
 		zname = FishLib.UNKNOWN;
+	else
+		local continent = GetCurrentMapContinent();
+		zname = LT:GetUniqueZoneNameForLookup(zname, continent)
 	end
 	
 	return zname;
@@ -903,12 +893,14 @@ function FishLib:GetBaseSubZone(sname)
 		return FishLib.UNKNOWN;
 	end
 	
-	if (sname and not BSL[sname] ) then
+	if (sname and not BSL[sname] and BSZR[sname]) then
 		sname = BSZR[sname];
 	end
+	
 	if (not sname) then
 		sname = FishLib.UNKNOWN;
 	end
+	
 	return sname;
 end
 
