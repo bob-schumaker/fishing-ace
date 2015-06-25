@@ -7,7 +7,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 90000 + tonumber(("$Rev: 919 $"):match("%d+"))
+local MINOR_VERSION = 90000 + tonumber(("$Rev: 971 $"):match("%d+"))
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -89,13 +89,35 @@ local FISHINGLURES = {
 		["d"] = 10,
 		["w"] = true,
 	},
+	{	["id"] = 117405,
+		["n"] = "Nat's Drinking Hat",				-- 150 for 10 mins
+		["b"] = 150,
+		["s"] = 100,
+		["d"] = 10,
+		["w"] = true,
+	},
 	{	["id"] = 33820,
-		["n"] = "Weather-Beaten Fishing Hat",		  -- 75 for 10 minutes
+		["n"] = "Weather-Beaten Fishing Hat",		 -- 75 for 10 minutes
 		["b"] = 75,
 		["s"] = 1,
 		["d"] = 10,
 		["w"] = true,
 	},
+	{	["id"] = 116826,
+		["n"] = "Draenic Fishing Pole",				 -- 200 for 10 minutes
+		["b"] = 200,
+		["s"] = 1,
+		["d"] = 20,									 -- 20 minute cooldown
+		["w"] = true,
+	},
+	{	["id"] = 116825,
+		["n"] = "Savage Fishing Pole",				 -- 200 for 10 minutes
+		["b"] = 200,
+		["s"] = 1,
+		["d"] = 20,									 -- 20 minute cooldown
+		["w"] = true,
+	},
+
 	{	["id"] = 34832,
 		["n"] = "Captain Rumsey's Lager",			     -- 10 for 3 mins
 		["b"] = 10,
@@ -229,15 +251,18 @@ function FishLib:UpdateLureInventory()
 		local count = GetItemCount(id);
 		-- does this lure have to be "worn"
 		if ( count > 0 ) then
-			-- get the name so we can check enchants
-			lure.n,_,_,_,_,_,_,_,_,_ = GetItemInfo(id);
-			if ( lure.b > b or lure.w ) then
-				b = lure.b;
-				if ( lure.u ) then
-					tinsert(useinventory, lure);
-				elseif ( lure.s <= rawskill ) then
-					if ( not lure.w or FishLib:IsWorn(id)) then
-						tinsert(lureinventory, lure);
+			local startTime, _, _ = GetItemCooldown(id);
+			if (startTime == 0) then
+				-- get the name so we can check enchants
+				lure.n,_,_,_,_,_,_,_,_,_ = GetItemInfo(id);
+				if ( lure.b > b or lure.w ) then
+					b = lure.b;
+					if ( lure.u ) then
+						tinsert(useinventory, lure);
+					elseif ( lure.s <= rawskill ) then
+						if ( not lure.w or FishLib:IsWorn(id)) then
+							tinsert(lureinventory, lure);
+						end
 					end
 				end
 			end
@@ -780,14 +805,11 @@ function FishLib:ClearLastTooltipText()
 end
 
 function FishLib:OnFishingBobber()
-	if ( GameTooltip:IsVisible() and not UIFrameIsFading(GameTooltip) ) then
+   if ( GameTooltip:IsVisible() and GameTooltip:GetAlpha() == 1 ) then
 		local text = self:GetTooltipText() or self:GetLastTooltipText();
-		if ( text ) then
-			-- let a partial match work (for translations)
-			return ( text and string.find(text, self:GetBobberName() ) );
-		end
+		-- let a partial match work (for translations)
+		return ( text and string.find(text, self:GetBobberName() ) );
 	end
-	return false;
 end
 
 local ACTIONDOUBLEWAIT = 0.4;
@@ -841,7 +863,7 @@ function FishLib:GetZoneInfo()
 	end
 	
 	local continent = GetCurrentMapContinent();
-	zone = LT:GetUniqueZoneNameForLookup(zone, continent)
+	zone = LT:GetUniqueEnglishZoneNameForLookup(zone, continent)
 
 	return zone, subzone;
 end
@@ -861,9 +883,6 @@ function FishLib:GetBaseZoneInfo()
 		zone = "Ironforge";
 	end
 	
-	local continent = GetCurrentMapContinent();
-	zone = LT:GetUniqueZoneNameForLookup(zone, continent)
-
 	return self:GetBaseZone(zone), self:GetBaseSubZone(subzone);
 end
 
@@ -882,7 +901,7 @@ function FishLib:GetBaseZone(zname)
 		zname = FishLib.UNKNOWN;
 	else
 		local continent = GetCurrentMapContinent();
-		zname = LT:GetUniqueZoneNameForLookup(zname, continent)
+		zname = LT:GetUniqueEnglishZoneNameForLookup(zname, continent)
 	end
 	
 	return zname;
@@ -917,7 +936,7 @@ function FishLib:GetLocZone(zname)
 		zname = FishLib.UNKNOWN;
 	else
 		local continent = GetCurrentMapContinent();
-		zname = LT:GetUniqueZoneNameForLookup(zname, continent)
+		zname = LT:GetUniqueEnglishZoneNameForLookup(zname, continent)
 	end
 
 	return zname;
@@ -1446,7 +1465,7 @@ function FishLib:GetOutfitBonus()
 end
 
 -- return a list of the best items we have for a fishing outfit
-function FishLib:GetFishingOutfitItems(wearing, nopole)
+function FishLib:GetFishingOutfitItems(wearing, nopole, ignore)
 	local ibp = function(link) return self:FishingBonusPoints(link); end;
 	-- find fishing gear
 	-- no affinity, check all bags
@@ -1475,24 +1494,26 @@ function FishLib:GetFishingOutfitItems(wearing, nopole)
 			wipe(itemtable);
 			itemtable = GetInventoryItemsForSlot(slotid, itemtable);
 			for location,id in pairs(itemtable) do
-				local player, bank, bags, void, slot, bag = EquipmentManager_UnpackLocation(location);
-				if ( bags and slot and bag ) then
-					link = GetContainerItemLink(bag, slot);
-				else
-					link = nil;
-				end
-				if ( link ) then
-					local b = self:FishingBonusPoints(link);
-					local go = false;
-					if ( ismain ) then
-						go = self:IsFishingPole(link);
+				if (not ignore or not ignore[id]) then
+					local player, bank, bags, void, slot, bag = EquipmentManager_UnpackLocation(location);
+					if ( bags and slot and bag ) then
+						link = GetContainerItemLink(bag, slot);
+					else
+						link = nil;
 					end
-					if (go or (b > 0)) then
-						local usable, _ = IsUsableItem(link);
-						if ( usable and (b > maxb) ) then
-							maxb = b;
-							outfit = outfit or {};
-							outfit[slotid] = { link=link, bag=bag, slot=slot, slotname=slotname };
+					if ( link ) then
+						local b = self:FishingBonusPoints(link);
+						local go = false;
+						if ( ismain ) then
+							go = self:IsFishingPole(link);
+						end
+						if (go or (b > 0)) then
+							local usable, _ = IsUsableItem(link);
+							if ( usable and (b > maxb) ) then
+								maxb = b;
+								outfit = outfit or {};
+								outfit[slotid] = { link=link, bag=bag, slot=slot, slotname=slotname };
+							end
 						end
 					end
 				end
