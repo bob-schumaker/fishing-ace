@@ -505,20 +505,46 @@ function FishLib:GetSlotMap()
 	return slotmap;
 end
 
+-- http://lua-users.org/wiki/CopyTable
+function shallowcopy(orig)
+    local orig_type = type(orig)
+    local copy
+    if orig_type == 'table' then
+        copy = {}
+        for orig_key, orig_value in pairs(orig) do
+            copy[orig_key] = orig_value
+        end
+    else -- number, string, boolean, etc
+        copy = orig
+    end
+    return copy
+end
+
+local function deepcopy(orig)
+    local orig_type = type(orig)
+    local copy
+    if orig_type == 'table' then
+        copy = {}
+        for orig_key, orig_value in next, orig, nil do
+            copy[deepcopy(orig_key)] = deepcopy(orig_value)
+        end
+        setmetatable(copy, deepcopy(getmetatable(orig)))
+    else -- number, string, boolean, etc
+        copy = orig
+    end
+    return copy
+end
+
 function FishLib:copytable(tab, level)
-	local t = {};
 	if (tab) then
-		level = level or 10000;
-		for k,v in pairs(tab) do
-			if ( type(v) == "table" and level > 0 ) then
-				level = level - 1;
-				t[k] = self:copytable(v, level);
-			else
-				t[k] = v;
-			end
+		if (level == 1) then
+			return shallowcopy(tab)
+		else
+			return deepcopy(tab)
 		end
+	else
+		return tab;
 	end
-	return t;
 end
 
 -- count tables that don't have monotonic integer indexes
