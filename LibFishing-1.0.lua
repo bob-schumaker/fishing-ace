@@ -7,7 +7,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 90000 + tonumber(("$Rev: 971 $"):match("%d+"))
+local MINOR_VERSION = 90979
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -30,12 +30,30 @@ local _
 
 local Crayon = LibStub("LibCrayon-3.0");
 local LT = LibStub("LibTourist-3.0");
+
+-- Some code suggested by the author of LibBabble-SubZone so I don't have
+-- to add the overrides myself...
+function FishLib_GetLocaleLibBabble(typ)
+	local rettab = {}
+	local tab = LibStub(typ):GetBaseLookupTable()
+	local loctab = LibStub(typ):GetUnstrictLookupTable()
+	for k,v in pairs(loctab) do
+		rettab[k] = v;
+	end
+	for k,v in pairs(tab) do
+		if not rettab[k] then
+			rettab[k] = v;
+		end
+	end
+	return rettab;
+end
+
 -- These are now provided by LibTourist
 local BZ = LibStub("LibTourist-3.0"):GetLookupTable()
 local BZR = LibStub("LibTourist-3.0"):GetReverseLookupTable();
 
+local BSZ = FishLib_GetLocaleLibBabble("LibBabble-SubZone-3.0");
 local BSL = LibStub("LibBabble-SubZone-3.0"):GetBaseLookupTable();
-local BSZ = LibStub("LibBabble-SubZone-3.0"):GetLookupTable();
 local BSZR = LibStub("LibBabble-SubZone-3.0"):GetReverseLookupTable();
 
 FishLib.UNKNOWN = "UNKNOWN";
@@ -255,12 +273,12 @@ function FishLib:UpdateLureInventory()
 			if (startTime == 0) then
 				-- get the name so we can check enchants
 				lure.n,_,_,_,_,_,_,_,_,_ = GetItemInfo(id);
-				if ( lure.b > b or lure.w ) then
-					b = lure.b;
-					if ( lure.u ) then
-						tinsert(useinventory, lure);
-					elseif ( lure.s <= rawskill ) then
-						if ( not lure.w or FishLib:IsWorn(id)) then
+				if (not lure.w or FishLib:IsWorn(id)) then
+					if ( lure.b > b) then
+						b = lure.b;
+						if ( lure.u ) then
+							tinsert(useinventory, lure);
+						elseif ( lure.s <= rawskill ) then
 							tinsert(lureinventory, lure);
 						end
 					end
@@ -284,7 +302,7 @@ function FishLib:HasBuff(buffName)
 	-- return nil
 end
 
-local function UseThisLure(lure, b, enchant, skill, level)
+function FishLib:UseThisLure(lure, b, enchant, skill, level)
 	if ( lure ) then
 		local startTime, _, _ = GetItemCooldown(lure.id);
 		-- already check for skill being nil, so that will skip the whole check with level
@@ -317,10 +335,13 @@ function FishLib:FindNextLure(b, state)
 	-- return nil;
 end
 
-function FishLib:FindBestLure(b, state, usedrinks)
+function FishLib:FindBestLure(b, state, usedrinks, forcemax)
 	local zone, subzone = self:GetZoneInfo();
 	local level = self:GetFishingLevel(zone, subzone);
 	if ( level and level > 1 ) then
+		if (forcemax) then
+			level = 9999;
+		end
 		local rank, modifier, skillmax, enchant = self:GetCurrentSkill();
 		local skill = rank + modifier;
 		-- don't need this now, LT has the full values
@@ -347,7 +368,7 @@ function FishLib:FindBestLure(b, state, usedrinks)
 			for s=state+1,#lureinventory,1 do
 				checklure = lureinventory[s];
 				if (checklure.w) then
-					useit, b = UseThisLure(checklure, b, enchant, skill, level);
+					useit, b = self:UseThisLure(checklure, b, enchant, skill, level);
 					if ( useit and b and b > 0 ) then
 						return s, checklure;
 					end
@@ -357,7 +378,7 @@ function FishLib:FindBestLure(b, state, usedrinks)
 			b = 0;
 			for s=state+1,#lureinventory,1 do
 				checklure = lureinventory[s];
-				useit, b = UseThisLure(checklure, b, enchant, skill, level);
+				useit, b = self:UseThisLure(checklure, b, enchant, skill, level);
 				if ( useit and b and b > 0 ) then
 					return s, checklure;
 				end
@@ -558,21 +579,22 @@ end
 
 -- return a printable representation of a value
 function FishLib:printable(val)
-	if ( val == nil ) then
-		return "nil";
-	elseif (type(val) == "boolean") then
+	if (type(val) == "boolean") then
 		return val and "true" or "false";
 	elseif (type(val) == "table") then
 		return "table";
+	elseif (val ~= nil) then
+		return tostring(val);
 	else
-		return ""..val;
+		return "nil";
 	end
 end
 
 -- this changes all the damn time
 -- "|c(%x+)|Hitem:(%d+)(:%d+):%d+:%d+:%d+:%d+:[-]?%d+:[-]?%d+:[-]?%d+:[-]?%d+|h%[(.*)%]|h|r"
 -- go with a fixed pattern, since sometimes the hyperlink trick appears not to work
-local _itempattern = "|c(%x+)|Hitem:([^:]+):([^:]+)[-:%d]+|h%[(.*)%]|h|r"
+-- In 7.0, the single digit '0' can be dropped, leading to ":::::" sequences
+local _itempattern = "|c(%x+)|Hitem:(%d+):(%d*):[^|]+|h%[(.*)%]|h|r"
 
 function FishLib:GetItemPattern()
 	if ( not _itempattern ) then
@@ -589,6 +611,9 @@ end
 function FishLib:SplitLink(link)
 	if ( link ) then
 		local _,_, color, id, enchant, name = string.find(link, self:GetItemPattern());
+		if (not enchant or enchant == '') then
+			enchant = 0;
+		end
 		if ( name ) then
 			return color, id..":"..enchant, name, enchant;
 		end
@@ -598,6 +623,9 @@ end
 function FishLib:SplitFishLink(link)
 	if ( link ) then
 		local _,_, color, id, enchant, name = string.find(link, self:GetItemPattern());
+		if (not enchant or enchant == '') then
+			enchant = 0;
+		end
 		return color, tonumber(id), name, enchant;
 	end
 end
@@ -605,8 +633,10 @@ end
 function FishLib:GetItemInfo(link)
 -- name, link, rarity, itemlevel, minlevel, itemtype
 -- subtype, stackcount, equiploc, texture
-	local itemName, itemLink, itemRarity, itemLevel, itemMinLevel, itemType, itemSubType, itemStackCount, itemEquipLoc, itemTexture, itemSellPrice = GetItemInfo(link);
-	return itemName, itemLink, itemRarity, itemMinLevel, itemType, itemSubType, itemStackCount, itemEquipLoc, itemTexture, itemLevel, itemSellPrice;
+	if (link) then
+		local itemName, itemLink, itemRarity, itemLevel, itemMinLevel, itemType, itemSubType, itemStackCount, itemEquipLoc, itemTexture, itemSellPrice = GetItemInfo(link);
+		return itemName, itemLink, itemRarity, itemMinLevel, itemType, itemSubType, itemStackCount, itemEquipLoc, itemTexture, itemLevel, itemSellPrice;
+	end
 end
 
 function FishLib:IsLinkableItem(link)
@@ -637,9 +667,9 @@ function FishLib:GetFishTooltip(force)
 		tooltip:SetOwner(WorldFrame, "ANCHOR_NONE");
 -- Allow tooltip SetX() methods to dynamically add new lines based on these
 -- I don't think we need it if we use GameTooltipTemplate...
---		  tooltip:AddFontStrings(
---				tooltip:CreateFontString( "$parentTextLeft9", nil, "GameTooltipText" ),
---				tooltip:CreateFontString( "$parentTextRight9", nil, "GameTooltipText" ) )
+		tooltip:AddFontStrings(
+		tooltip:CreateFontString( "$parentTextLeft9", nil, "GameTooltipText" ),
+		tooltip:CreateFontString( "$parentTextRight9", nil, "GameTooltipText" ) )
 	end
 	-- the owner gets unset sometimes, not sure why
 	local owner, anchor = tooltip:GetOwner();
@@ -763,6 +793,7 @@ function FishLib:GetTrackingID(tex)
 	if ( tex ) then
 		for id=1,GetNumTrackingTypes() do
 			local _, texture, _, _ = GetTrackingInfo(id);
+			texture = texture.."";
 			if ( texture == tex) then
 				return id;
 			end
@@ -771,7 +802,8 @@ function FishLib:GetTrackingID(tex)
 	-- return nil;
 end
 
-local FINDFISHTEXTURE = "Interface\\Icons\\INV_Misc_Fish_02";
+-- local FINDFISHTEXTURE = "Interface\\Icons\\INV_Misc_Fish_02";
+local FINDFISHTEXTURE = "133888";
 function FishLib:GetFindFishID()
 	if ( not self.FindFishID ) then
 		self.FindFishID = self:GetTrackingID(FINDFISHTEXTURE);
@@ -832,7 +864,7 @@ end
 
 function FishLib:OnFishingBobber()
    if ( GameTooltip:IsVisible() and GameTooltip:GetAlpha() == 1 ) then
-		local text = self:GetTooltipText() or self:GetLastTooltipText();
+		local text = GameTooltipTextLeft1:GetText() or self:GetLastTooltipText();
 		-- let a partial match work (for translations)
 		return ( text and string.find(text, self:GetBobberName() ) );
 	end
@@ -1113,19 +1145,14 @@ function FishLib:GetCaughtSoFar()
 end
 
 -- Find an action bar for fishing, if there is one
-local FISHINGTEXTURE = "Interface\\Icons\\Trade_Fishing";
+local FISHINGTEXTURE = 136245;
 function FishLib:GetFishingActionBarID(force)
 	if ( force or not self.ActionBarID ) then
 		for slot=1,72 do
-			if ( HasAction(slot) and not IsAttackAction(slot) ) then
-				local t,_,_ = GetActionInfo(slot);
-				if ( t == "spell" ) then
-					local tex = GetActionTexture(slot);
-					if ( tex and tex == FISHINGTEXTURE ) then
-						self.ActionBarID = slot;
-						break;
-					end
-				end
+			local tex = GetActionTexture(slot);
+			if ( tex and tex == FISHINGTEXTURE ) then
+				self.ActionBarID = slot;
+				break;
 			end
 		end
 	end
@@ -1352,16 +1379,24 @@ function FishLib:InvokeFishing(useaction)
 	btn.postclick = nil;
 end
 
-function FishLib:InvokeLuring(id)
+function FishLib:InvokeLuring(id, itemtype, targetslot)
 	local btn = self.sabutton;
 	if ( not btn ) then
 		return;
 	end
-	btn:SetAttribute("type", "item");
 	if ( id ) then
-		btn:SetAttribute("item", "item:"..id);
-		btn:SetAttribute("target-slot", INVSLOT_MAINHAND);
+		if (string.match(id, "^%d+$")) then
+			id = "item:"..id;
+		end
+		if (not itemtype) then
+			itemtype = "item";
+			targetslot = INVSLOT_MAINHAND;
+		end
+		btn:SetAttribute("type", itemtype);
+		btn:SetAttribute("item", id);
+		btn:SetAttribute("target-slot", targetslot);
 	else
+		btn:SetAttribute("type", nil);
 		btn:SetAttribute("item", nil);
 		btn:SetAttribute("target-slot", nil);
 	end
