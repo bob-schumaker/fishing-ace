@@ -7,29 +7,28 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 --]]
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 90979
+local MINOR_VERSION = 90988
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
-local FishLib, oldLib = LibStub:NewLibrary(MAJOR_VERSION, MINOR_VERSION)
+local FishLib, _ = LibStub:NewLibrary(MAJOR_VERSION, MINOR_VERSION)
 if not FishLib then
 	return
 end
 
--- keep the old stuff, in case we want some of the settings.
-if oldLib then
-	oldLib = {}
-	for k, v in pairs(FishLib) do
-		FishLib[k] = nil
-		oldLib[k] = v
-	end
+if not oldLib then
+	FishLib.caughtSoFar = 0;
+	FishLib.gearcheck = true
+	FishLib.hasgear = false;
 end
 
 -- 5.0.4 has a problem with a global "_" (see some for loops below)
 local _
 
-local Crayon = LibStub("LibCrayon-3.0");
 local LT = LibStub("LibTourist-3.0");
+
+-- Secure action button
+local SABUTTONNAME = "LibFishingSAButton";
 
 -- Some code suggested by the author of LibBabble-SubZone so I don't have
 -- to add the overrides myself...
@@ -99,37 +98,58 @@ function FishLib:GetCurrentSkill()
 end
 
 -- Lure library
-local FISHINGLURES = {
+local DRAENOR_HATS = {
+	["118393"] =  {
+		["enUS"] = "Tentacled Hat",
+		["b"] = 100,
+		["spell"] = 174479,
+	},
+	["118380"] = {
+		["n"] = "HightFish Cap",
+		["b"] = 100,
+		["spell"] = 118380,
+	},
+}
+
+local NATS_HATS = {
 	{	["id"] = 88710,
-		["n"] = "Nat's Hat",						-- 150 for 10 mins
+		["enUS"] = "Nat's Hat",						-- 150 for 10 mins
+		spell = 7823,
 		["b"] = 150,
 		["s"] = 100,
 		["d"] = 10,
 		["w"] = true,
 	},
 	{	["id"] = 117405,
-		["n"] = "Nat's Drinking Hat",				-- 150 for 10 mins
+		["enUS"] = "Nat's Drinking Hat",			-- 150 for 10 mins
+		spell = 124034,
 		["b"] = 150,
 		["s"] = 100,
 		["d"] = 10,
 		["w"] = true,
 	},
 	{	["id"] = 33820,
-		["n"] = "Weather-Beaten Fishing Hat",		 -- 75 for 10 minutes
+		["enUS"] = "Weather-Beaten Fishing Hat",	-- 75 for 10 minutes
+		spell = 7823,
 		["b"] = 75,
 		["s"] = 1,
 		["d"] = 10,
 		["w"] = true,
-	},
+	}
+}
+
+local FISHINGLURES = {
 	{	["id"] = 116826,
-		["n"] = "Draenic Fishing Pole",				 -- 200 for 10 minutes
+		["enUS"] = "Draenic Fishing Pole",			-- 200 for 10 minutes
+		spell = 175369,
 		["b"] = 200,
 		["s"] = 1,
 		["d"] = 20,									 -- 20 minute cooldown
 		["w"] = true,
 	},
 	{	["id"] = 116825,
-		["n"] = "Savage Fishing Pole",				 -- 200 for 10 minutes
+		["enUS"] = "Savage Fishing Pole",			-- 200 for 10 minutes
+		spell = 59731,
 		["b"] = 200,
 		["s"] = 1,
 		["d"] = 20,									 -- 20 minute cooldown
@@ -137,86 +157,115 @@ local FISHINGLURES = {
 	},
 
 	{	["id"] = 34832,
-		["n"] = "Captain Rumsey's Lager",			     -- 10 for 3 mins
+		["enUS"] = "Captain Rumsey's Lager",		 -- 10 for 3 mins
+		spell = 45694,
 		["b"] = 10,
 		["s"] = 1,
 		["d"] = 3,
 		["u"] = 1,
 	},
 	{	["id"] = 67404,
-		["n"] = "Glass Fishing Bobber",				-- ???
+		["enUS"] = "Glass Fishing Bobber",
+		spell = 98849,
 		["b"] = 15,
 		["s"] = 1,
 		["d"] = 10,
 	},
 	{	["id"] = 6529,
-		["n"] = "Shiny Bauble",							  -- 25 for 10 mins
+		["enUS"] = "Shiny Bauble",					-- 25 for 10 mins
+		spell = 8087,
 		["b"] = 25,
 		["s"] = 1,
 		["d"] = 10,
 	},
 	{	["id"] = 6811,
-		["n"] = "Aquadynamic Fish Lens",				  -- 50 for 10 mins
+		["enUS"] = "Aquadynamic Fish Lens",			-- 50 for 10 mins
+		spell = 8532,
 		["b"] = 50,
 		["s"] = 50,
 		["d"] = 10,
 	},
 	{	["id"] = 6530,
-		["n"] = "Nightcrawlers",						  -- 50 for 10 mins
+		["enUS"] = "Nightcrawlers",					-- 50 for 10 mins
+		spell = 8088,
 		["b"] = 50,
 		["s"] = 50,
 		["d"] = 10,
 	},
 	{	["id"] = 7307,
-		["n"] = "Flesh Eating Worm",					  -- 75 for 10 mins
+		["enUS"] = "Flesh Eating Worm",				-- 75 for 10 mins
+		spell = 9092,
 		["b"] = 75,
 		["s"] = 100,
 		["d"] = 10,
 	},
 	{	["id"] = 6532,
-		["n"] = "Bright Baubles",						  -- 75 for 10 mins
+		["enUS"] = "Bright Baubles",				-- 75 for 10 mins
+		spell = 8090,
 		["b"] = 75,
 		["s"] = 100,
 		["d"] = 10,
 	},
 	{	["id"] = 34861,
-		["n"] = "Sharpened Fish Hook",				  -- 100 for 10 minutes
+		["enUS"] = "Sharpened Fish Hook",			-- 100 for 10 minutes
+		spell = 45731,
 		["b"] = 100,
 		["s"] = 100,
 		["d"] = 10,
 	},
 	{	["id"] = 6533,
-		["n"] = "Aquadynamic Fish Attractor",		  -- 100 for 10 minutes
+		["enUS"] = "Aquadynamic Fish Attractor",	-- 100 for 10 minutes
+		spell = 8089,
 		["b"] = 100,
 		["s"] = 100,
 		["d"] = 10,
 	},
 	{	["id"] = 62673,
-		["n"] = "Feathered Lure",					  -- 100 for 10 minutes
+		["enUS"] = "Feathered Lure",				-- 100 for 10 minutes
+		spell = 87646,
 		["b"] = 100,
 		["s"] = 100,
 		["d"] = 10,
 	},
 	{	["id"] = 46006,
-		["n"] = "Glow Worm",						-- 100 for 60 minutes
+		["enUS"] = "Glow Worm",						-- 100 for 60 minutes
+		spell = 64401,
 		["b"] = 100,
 		["s"] = 100,
 		["d"] = 60,
 		["l"] = 1,
 	},
 	{	["id"] = 68049,
-		["n"] = "Heat-Treated Spinning Lure",		 -- 150 for 5 minutes
+		["enUS"] = "Heat-Treated Spinning Lure",	-- 150 for 5 minutes
+		spell = 95244,
 		["b"] = 150,
 		["s"] = 250,
 		["d"] = 5,
 	},
 	{	["id"] = 118391,
-		["n"] = "Worm Supreme",						-- 200 for 10 mins
+		["enUS"] = "Worm Supreme",					-- 200 for 10 mins
+		spell = 174471,
 		["b"] = 200,
 		["s"] = 100,
 		["d"] = 10,
-	},
+	}
 }
+
+local FISHINGHATS = {}
+for _,info in ipairs(NATS_HATS) do
+	tinsert(FISHINGLURES, info)
+	tinsert(FISHINGHATS, info)
+end
+
+for id,info in ipairs(DRAENOR_HATS) do
+	info["id"] = id
+	info["n"] = info["enUS"]
+	tinsert(FISHINGHATS, info)
+end
+
+for _,info in ipairs(FISHINGLURES) do
+	info["n"] = info["enUS"]
+end
 
 -- sort ascending bonus and ascending time
 -- we may have to treat "Heat-Treated Spinning Lure" differently someday
@@ -229,8 +278,23 @@ table.sort(FISHINGLURES,
 		end
 	end);
 
+table.sort(FISHINGHATS,
+function(a,b)
+	return a.b > b.b;
+end);
+
+
+
 function FishLib:GetLureTable()
 	return FISHINGLURES;
+end
+
+function FishLib:GetHatTable()
+	return NATS_HATS;
+end
+
+function FishLib:GetDraenorHatTable()
+	return DRAENOR_HATS;
 end
 
 function FishLib:IsWorn(itemid)
@@ -271,9 +335,14 @@ function FishLib:UpdateLureInventory()
 		if ( count > 0 ) then
 			local startTime, _, _ = GetItemCooldown(id);
 			if (startTime == 0) then
-				-- get the name so we can check enchants
-				lure.n,_,_,_,_,_,_,_,_,_ = GetItemInfo(id);
-				if (not lure.w or FishLib:IsWorn(id)) then
+				if not lure.buff then
+					lure.buff = GetSpellInfo(lure.spell)
+				end
+				if (lure.w) then
+					if (self:IsWorn(id)) then
+						tinsert(lureinventory, lure);
+					end
+				else
 					if ( lure.b > b) then
 						b = lure.b;
 						if ( lure.u ) then
@@ -293,15 +362,42 @@ function FishLib:GetLureInventory()
 	return lureinventory, useinventory;
 end
 
--- Deal with lures
-function FishLib:HasBuff(buffName)
+-- Handle buffs
+local BuffWatch = {}
+function FishLib:WaitForBuff(buffName)
+	local btn = _G[SABUTTONNAME];
+	if ( btn ) then
+		BuffWatch[buffName] = GetTime() + 0.6
+		btn.updater:Show()
+	end
+end
+
+function FishLib:HasBuff(buffName, skipWait)
 	if ( buffName ) then
-		 local name, _, _, _, _, _, _, _, _ = UnitBuff("player", buffName);
-		 return name ~= nil;
+		-- if we're waiting, assume we're going to have it
+		if ( not skipWait and BuffWatch[buffName] ) then
+			return true
+		else
+			local name, _, _, _, _, _, _, _, _ = UnitBuff("player", buffName);
+			return name ~= nil;
+		end
 	end
 	-- return nil
 end
 
+function FishLib:HasLureBuff()
+	for _,lure in ipairs(FISHINGLURES) do
+		if not lure.buff then
+			lure.buff = GetSpellInfo(lure.spell)
+		end
+		if self:HasBuff(lure.buff) then
+			return true
+		end
+	end
+	-- return nil
+end
+
+-- Deal with lures
 function FishLib:UseThisLure(lure, b, enchant, skill, level)
 	if ( lure ) then
 		local startTime, _, _ = GetItemCooldown(lure.id);
@@ -310,7 +406,7 @@ function FishLib:UseThisLure(lure, b, enchant, skill, level)
 		level = level or 0;
 		local bonus = lure.b or 0;
 		if ( startTime == 0 and (skill and level <= (skill + bonus)) and (bonus > enchant) ) then
-			if ( not b or bonus > b ) then 
+			if ( not b or bonus > b ) then
 				return true, bonus;
 			end
 		end
@@ -326,7 +422,7 @@ function FishLib:FindNextLure(b, state)
 			local id = lureinventory[s].id;
 			local startTime, _, _ = GetItemCooldown(id);
 			if ( startTime == 0 ) then
-				if ( not b or lureinventory[s].b > b ) then 
+				if ( not b or lureinventory[s].b > b ) then
 					return s, lureinventory[s];
 				end
 			end
@@ -363,7 +459,7 @@ function FishLib:FindBestLure(b, state, usedrinks, forcemax)
 			state = state or 0;
 			local checklure;
 			local useit, b = 0;
-			
+
 			-- Look for lures we're wearing, first
 			for s=state+1,#lureinventory,1 do
 				checklure = lureinventory[s];
@@ -393,25 +489,22 @@ function FishLib:FindBestLure(b, state, usedrinks, forcemax)
 	-- return nil;
 end
 
-if oldlib then
-	FishLib.caughtSoFar = oldlib.caughtSoFar or 0;
-	FishLib.gearcheck = oldlib.gearcheck;
-	FishLib.hasgear = oldlib.hasgear;
-	FishLib.FindFishID = oldlib.FindFishID;
-	FishLib.BOBBER_NAME = oldlib.BOBBER_NAME;
-	FishLib.watchBobber = oldlib.watchBobber;
-	FishLib.ActionBarID = oldlib.ActionBarID;
-else
-	FishLib.caughtSoFar = 0;
-	FishLib.gearcheck = true;
-	FishLib.hasgear = false;
+function FishLib:FindBestHat()
+	for _,hat in ipairs(FISHINGHATS) do
+		if GetItemCount(hat["id"]) > 0 then
+			local startTime, _, _ = GetItemCooldown(hat["id"]);
+			if ( startTime == 0 ) then
+				return 1, hat;
+			end
+		end
+	end
 end
 
 -- Handle events we care about
 local canCreateFrame = false;
 
 local FISHLIBFRAMENAME="FishLibFrame";
-local fishlibframe = getglobal(FISHLIBFRAMENAME);
+local fishlibframe = _G[FISHLIBFRAMENAME];
 if ( not fishlibframe) then
 	fishlibframe = CreateFrame("Frame", FISHLIBFRAMENAME);
 	fishlibframe:RegisterEvent("PLAYER_ENTERING_WORLD");
@@ -424,7 +517,7 @@ if ( not fishlibframe) then
 	fishlibframe:RegisterEvent("UNIT_SPELLCAST_CHANNEL_START");
 	fishlibframe:RegisterEvent("UNIT_SPELLCAST_CHANNEL_STOP");
 	fishlibframe:RegisterEvent("EQUIPMENT_SWAP_FINISHED");
-	fishlibframe:RegisterEvent("ITEM_LOCK_CHANGED");	
+	fishlibframe:RegisterEvent("ITEM_LOCK_CHANGED");
 end
 
 fishlibframe.fl = FishLib;
@@ -514,9 +607,20 @@ local slotmap = {
 	["INVTYPE_RELIC"] = { INVSLOT_RANGED },
 	["INVTYPE_TABARD"] = { INVSLOT_TABARD },
 	["INVTYPE_BAG"] = { 20,21,22,23 },
-	["INVTYPE_QUIVER"] = { 20,21,22,23 }, 
+	["INVTYPE_QUIVER"] = { 20,21,22,23 },
 	[""] = { },
 };
+
+local infoslot = nil;
+function FishLib:GetInfoSlot()
+	if not infoslot then
+		infoslot = {}
+		for idx=1,17,1 do
+			infoslot[slotinfo[idx].id] = slotinfo[idx]
+		end
+	end
+	return infoslot
+end
 
 function FishLib:GetSlotInfo()
 	return INVSLOT_MAINHAND, INVSLOT_OFFHAND, slotinfo;
@@ -577,12 +681,60 @@ function FishLib:tablecount(tab)
 	return n;
 end
 
+-- iterate over a table using sorted keys
+-- https://stackoverflow.com/questions/15706270/sort-a-table-in-lua
+function FishLib:spairs(t, order)
+    -- collect the keys
+    local keys = {}
+    for k in pairs(t) do keys[#keys+1] = k end
+
+    -- if order function given, sort by it by passing the table and keys a, b,
+    -- otherwise just sort the keys
+    if order then
+        table.sort(keys, function(a,b) return order(t, a, b) end)
+    else
+        table.sort(keys)
+    end
+
+    -- return the iterator function
+    local i = 0
+    return function()
+        i = i + 1
+        if keys[i] then
+            return keys[i], t[keys[i]]
+        end
+    end
+end
+
+-- return a lookup for table values, doesn't do unique
+function FishLib:tablemap(t)
+	local set = {}
+	for _, l in ipairs(t) do set[l] = true end
+	return set
+end
+
+-- return a lookup for table values, doesn't do unique
+function FishLib:keytable(t)
+	local tab = {}
+	for k,_ in pairs(t) do tinsert(tab, k) end
+	return tab
+end
+
 -- return a printable representation of a value
 function FishLib:printable(val)
 	if (type(val) == "boolean") then
 		return val and "true" or "false";
 	elseif (type(val) == "table") then
-		return "table";
+		local tab = nil;
+		for key,value in self:spairs(val) do
+			if tab then
+				tab = tab..", "
+			else
+				tab = "[ "
+			end
+			tab = tab..value
+		end
+		return tab.." ]"
 	elseif (val ~= nil) then
 		return tostring(val);
 	else
@@ -647,9 +799,9 @@ end
 function FishLib:ChatLink(item, name, color)
 	if( item and name and ChatFrameEditBox:IsVisible() ) then
 		if ( not color ) then
-			color = Crayon.COLOR_HEX_WHITE;
-		elseif ( Crayon["COLOR_HEX_"..color] ) then
-			color = Crayon["COLOR_HEX_"..color];
+			color = self.COLOR_HEX_WHITE;
+		elseif ( self["COLOR_HEX_"..color] ) then
+			color = self["COLOR_HEX_"..color];
 		end
 		if ( string.len(color) == 6) then
 			color = "ff"..color;
@@ -719,13 +871,21 @@ function FishLib:AddSchoolName(name)
 	tinsert(self.SCHOOLS, { name = name, kind = SCHOOL_FISH });
 end
 
-function FishLib:GetMainHandItem(id)
-	local itemLink = GetInventoryItemLink("player", INVSLOT_MAINHAND);
-	if ( not id ) then
+function FishLib:GetWornItem(get_id, slot)
+	local itemLink = GetInventoryItemLink("player", slot);
+	if ( not get_id ) then
 		return itemLink;
 	end
 	_, id, _ = self:SplitFishLink(itemLink);
 	return id;
+end
+
+function FishLib:GetMainHandItem(get_id)
+	return self:GetWornItem(get_id, INVSLOT_MAINHAND);
+end
+
+function FishLib:GetHeadItem(get_id)
+	return self:GetWornItem(get_id, INVSLOT_HEAD);
 end
 
 function FishLib:IsFishingPole(itemLink)
@@ -739,7 +899,7 @@ function FishLib:IsFishingPole(itemLink)
 
 		self:GetPoleType();
 		if ( not fp_itemtype and itemTexture ) then
-			 -- If there is infact an item in the main hand, and it's texture
+			 -- If there is in fact an item in the main hand, and it's texture
 			 -- that matches the fishing pole texture, then we have a fishing pole
 			 itemTexture = string.lower(itemTexture);
 			 if ( string.find(itemTexture, "inv_fishingpole") or
@@ -841,7 +1001,7 @@ end
 
 function FishLib:GetTooltipText()
 	if ( GameTooltip:IsVisible() ) then
-		local text = getglobal("GameTooltipTextLeft1");
+		local text = _G["GameTooltipTextLeft1"];
 		if ( text ) then
 			return text:GetText();
 		end
@@ -906,6 +1066,9 @@ function FishLib:ExtendDoubleClick()
 end
 
 function FishLib:GetZoneInfo()
+	if(not WorldMapFrame:IsShown()) then
+		SetMapToCurrentZone()
+	end
 	local zone = GetRealZoneText();
 	local subzone = GetSubZoneText();
 	if ( not zone or zone == "" ) then
@@ -919,7 +1082,7 @@ function FishLib:GetZoneInfo()
 	if (zone == "City of Ironforge" ) then
 		zone = "Ironforge";
 	end
-	
+
 	local continent = GetCurrentMapContinent();
 	zone = LT:GetUniqueEnglishZoneNameForLookup(zone, continent)
 
@@ -940,7 +1103,7 @@ function FishLib:GetBaseZoneInfo()
 	if (zone == "City of Ironforge" ) then
 		zone = "Ironforge";
 	end
-	
+
 	return self:GetBaseZone(zone), self:GetBaseSubZone(subzone);
 end
 
@@ -961,7 +1124,7 @@ function FishLib:GetBaseZone(zname)
 		local continent = GetCurrentMapContinent();
 		zname = LT:GetUniqueEnglishZoneNameForLookup(zname, continent)
 	end
-	
+
 	return zname;
 end
 
@@ -969,15 +1132,15 @@ function FishLib:GetBaseSubZone(sname)
 	if ( sname == FishLib.UNKNOWN or sname == UNKNOWN ) then
 		return FishLib.UNKNOWN;
 	end
-	
+
 	if (sname and not BSL[sname] and BSZR[sname]) then
 		sname = BSZR[sname];
 	end
-	
+
 	if (not sname) then
 		sname = FishLib.UNKNOWN;
 	end
-	
+
 	return sname;
 end
 
@@ -1068,21 +1231,21 @@ function FishLib:GetFishingSkillLine(join, withzone, isfishing)
 			if (perc > 1.0) then
 				perc = 1.0;
 			end
-			part1 = part1.."|cff"..Crayon:GetThresholdHexColor(perc*perc)..level.." ("..math.floor(perc*perc*100).."%)|r";
+			part1 = part1.."|cff"..self:GetThresholdHexColor(perc*perc)..level.." ("..math.floor(perc*perc*100).."%)|r";
 		else
 			-- need to translate this on our own
-			part1 = part1..Crayon:Red(NONE_KEY);
+			part1 = part1..self:Red(NONE_KEY);
 		end
 	else
-		part1 = part1..Crayon:Red(UNKNOWN);
+		part1 = part1..self:Red(UNKNOWN);
 	end
 	-- have some more details if we've got a pole equipped
 	if ( isfishing or self:IsFishingGear() ) then
-		part2 = Crayon:Green(skill.."+"..mods).." "..Crayon:Silver("["..totskill.."]");
+		part2 = self:Green(skill.."+"..mods).." "..self:Silver("["..totskill.."]");
 	end
 	if ( join ) then
 		if (part1 ~= "" and part2 ~= "" ) then
-			part1 = part1..Crayon:White(" | ")..part2;
+			part1 = part1..self:White(" | ")..part2;
 			part2 = "";
 		end
 	end
@@ -1128,10 +1291,10 @@ function FishLib:GetSkillUpInfo()
 	else
 		self.caughtSoFar = 0;
 	end
-	return self.caughtSoFar, nil;
+	return self.caughtSoFar or 0, nil;
 end
 
--- we should have some way to believe 
+-- we should have some way to believe
 function FishLib:SetCaughtSoFar(value)
 	if ( FishingBuddy and FishingBuddy.GetSetting ) then
 		self.caughtSoFar = FishingBuddy.GetSetting("CaughtSoFar") or 0;
@@ -1242,9 +1405,9 @@ end
 function FishLib:FindChatWindow(name)
 	local frame;
 	for i = 1, NUM_CHAT_WINDOWS do
-		local frame = getglobal("ChatFrame" .. i);
+		local frame = _G["ChatFrame" .. i];
 		if (frame.name == name) then
-			return frame, getglobal("ChatFrame" .. i .. "Tab");
+			return frame, _G["ChatFrame" .. i .. "Tab"];
 		end
 	end
 	-- return nil, nil;
@@ -1274,14 +1437,20 @@ function FishLib:GetChatWindow(name)
 	return DEFAULT_CHAT_FRAME, nil;
 end
 
--- Secure action button
-local SABUTTONNAME = "LibFishingSAButton";
+local function HideHolder(self)
+	if not UnitAffectingCombat("player") then
+		self.holder:Hide();
+		self:SetScript("OnUpdate", nil);
+	else
+		self:SetScript("OnUpdate", HideHolder);
+	end
+end
 
 function FishLib:ResetOverride()
-	local btn = self.sabutton;
+	local btn = _G[SABUTTONNAME];
 	if ( btn ) then
-		btn.holder:Hide();
 		ClearOverrideBindings(btn);
+		HideHolder(btn)
 	end
 end
 
@@ -1292,8 +1461,25 @@ local function ClickHandled(self)
 	end
 end
 
+local CHECKINTERVAL = 0.5
+local function BuffUpdate(self, elapsed)
+	self.lastUpdate = self.lastUpdate + elapsed;
+	if self.lastUpdate > CHECKINTERVAL then
+		local now = GetTime()
+		for buff, done in pairs(BuffWatch) do
+			if (done > now) or self.lib:HasBuff(buff, true) then
+				BuffWatch[buff] = nil
+			end
+		end
+		self.lastUpdate = 0
+		if ( self.lib:tablecount(BuffWatch) ) then
+			self:Hide()
+		end
+	end
+end
+
 function FishLib:CreateSAButton()
-	local btn = getglobal(SABUTTONNAME);
+	local btn = _G[SABUTTONNAME];
 	if ( not btn ) then
 		local holder = CreateFrame("Frame", nil, UIParent);
 		btn = CreateFrame("Button", SABUTTONNAME, holder, "SecureActionButtonTemplate");
@@ -1306,12 +1492,19 @@ function FishLib:CreateSAButton()
 		holder:SetFrameStrata("LOW");
 		holder:Hide();
 	end
+
+	if (not btn.updater) then
+		btn.updater = CreateFrame("Frame", nil, UIParent);
+		btn.updater:SetScript("OnUpdate", BuffUpdate);
+		btn.updater.lastUpdate = 0
+		btn.updater.lib = self
+		btn.updater:Hide()
+	end
 	if (not self.buttonevent) then
 		self.buttonevent = "RightButtonUp";
 	end
 	btn:SetScript("PostClick", ClickHandled);
 	btn:RegisterForClicks(self.buttonevent);
-	self.sabutton = btn;
 	btn.fl = self;
 end
 
@@ -1348,10 +1541,10 @@ function FishLib:SetSAMouseEvent(buttonevent)
 	end
 	if (self.CastButton[buttonevent]) then
 		self.buttonevent = buttonevent;
-		local btn = getglobal(SABUTTONNAME);
+		local btn = _G[SABUTTONNAME];
 		if ( btn ) then
-			btn:RegisterForClicks(nil);		
-			btn:RegisterForClicks(self.buttonevent);		
+			btn:RegisterForClicks(nil);
+			btn:RegisterForClicks(self.buttonevent);
 		end
 		return true;
 	end
@@ -1359,12 +1552,12 @@ function FishLib:SetSAMouseEvent(buttonevent)
 end
 
 function FishLib:InvokeFishing(useaction)
-	local btn = self.sabutton;
+	local btn = _G[SABUTTONNAME];
 	if ( not btn ) then
 		return;
 	end
 	local _, name = self:GetFishingSkillInfo();
-	local findid = self:GetFishingActionBarID();	  
+	local findid = self:GetFishingActionBarID();
 	if ( not useaction or not findid ) then
 		btn:SetAttribute("type", "spell");
 		btn:SetAttribute("spell", name);
@@ -1376,11 +1569,11 @@ function FishLib:InvokeFishing(useaction)
 	end
 	btn:SetAttribute("item", nil);
 	btn:SetAttribute("target-slot", nil);
-	btn.postclick = nil;
+	-- btn.postclick = nil;
 end
 
 function FishLib:InvokeLuring(id, itemtype, targetslot)
-	local btn = self.sabutton;
+	local btn = _G[SABUTTONNAME];
 	if ( not btn ) then
 		return;
 	end
@@ -1402,11 +1595,31 @@ function FishLib:InvokeLuring(id, itemtype, targetslot)
 	end
 	btn:SetAttribute("spell", nil);
 	btn:SetAttribute("action", nil);
-	btn.postclick = nil;
+	-- btn.postclick = nil;
+end
+
+function FishLib:InvokeMacro(macrotext)
+	local btn = _G[SABUTTONNAME];
+	if ( not btn ) then
+		return;
+	end
+	btn:SetAttribute("type", "macro");
+	if (macrotext.find(macrotext, "/")) then
+		btn:SetAttribute("macrotext", macrotext);
+		btn:SetAttribute("macro", nil);
+	else
+		btn:SetAttribute("macrotext", nil);
+		btn:SetAttribute("macro", macrotext);
+	end
+	btn:SetAttribute("item", nil);
+	btn:SetAttribute("target-slot", nil);
+	btn:SetAttribute("spell", nil);
+	btn:SetAttribute("action", nil);
+	-- btn.postclick = nil;
 end
 
 function FishLib:OverrideClick(postclick)
-	local btn = self.sabutton;
+	local btn = _G[SABUTTONNAME];
 	if ( not btn ) then
 		return;
 	end
@@ -1419,7 +1632,7 @@ function FishLib:OverrideClick(postclick)
 end
 
 function FishLib:ClickSAButton()
-	local btn = self.sabutton;
+	local btn = _G[SABUTTONNAME];
 	if ( not btn ) then
 		return;
 	end
@@ -1525,59 +1738,58 @@ function FishLib:GetOutfitBonus()
 	return bonus + pole, lure;
 end
 
+function FishLib:GetBestFishingItem(slotid)
+	local item = nil
+	local maxb = 0;
+	if not infoslot then
+		self:GetInfoSlot()
+	end
+	local slotname = infoslot[slotid].name;
+
+	local link = GetInventoryItemLink("player", slotid);
+	if ( link ) then
+		maxb = self:FishingBonusPoints(link);
+		if (maxb > 0) then
+			item = { link=link, slot=slotid, bonus=maxb, slotname=slotname };
+		end
+	end
+
+	-- this only gets items in bags, hence the check above for slots
+	local itemtable = {}
+	itemtable = GetInventoryItemsForSlot(slotid, itemtable);
+	for location,id in pairs(itemtable) do
+		if (not ignore or not ignore[id]) then
+			local player, bank, bags, void, slot, bag = EquipmentManager_UnpackLocation(location);
+			if ( bags and slot and bag ) then
+				link = GetContainerItemLink(bag, slot);
+			else
+				link = nil;
+			end
+			if ( link ) then
+				local b = self:FishingBonusPoints(link);
+				if (b > maxb) then
+					maxb = b;
+					item = { link=link, bag=bag, slot=slot, slotname=slotname, bonus=maxb };
+				end
+			end
+		end
+	end
+	return item
+end
+
 -- return a list of the best items we have for a fishing outfit
 function FishLib:GetFishingOutfitItems(wearing, nopole, ignore)
-	local ibp = function(link) return self:FishingBonusPoints(link); end;
 	-- find fishing gear
 	-- no affinity, check all bags
 	local outfit = nil;
-	local itemtable = {};
 	for invslot=1,17,1 do
 		local slotid = slotinfo[invslot].id;
 		local ismain = (slotid == INVSLOT_MAINHAND);
 		if ( not nopole or not ismain ) then
-			local slotname = slotinfo[invslot].name;
-			local maxb = -1;
-			local link;
-			-- should we include what we're already wearing?
-			if ( wearing ) then
-				link = GetInventoryItemLink("player", slotid);
-				if ( link ) then
-					maxb = self:FishingBonusPoints(link);
-					if (maxb > 0) then
-						outfit = outfit or {};
-						outfit[invslot] = { link=link, slot=slotid };
-					end
-				end
-			end
-	
-			-- this only gets items in bags, hence the check above for slots
-			wipe(itemtable);
-			itemtable = GetInventoryItemsForSlot(slotid, itemtable);
-			for location,id in pairs(itemtable) do
-				if (not ignore or not ignore[id]) then
-					local player, bank, bags, void, slot, bag = EquipmentManager_UnpackLocation(location);
-					if ( bags and slot and bag ) then
-						link = GetContainerItemLink(bag, slot);
-					else
-						link = nil;
-					end
-					if ( link ) then
-						local b = self:FishingBonusPoints(link);
-						local go = false;
-						if ( ismain ) then
-							go = self:IsFishingPole(link);
-						end
-						if (go or (b > 0)) then
-							local usable, _ = IsUsableItem(link);
-							if ( usable and (b > maxb) ) then
-								maxb = b;
-								outfit = outfit or {};
-								outfit[slotid] = { link=link, bag=bag, slot=slot, slotname=slotname };
-							end
-						end
-					end
-				end
+			item = self:GetBestFishingItem(slotid)
+			if item then
+				outfit = outfit or {};
+				outfit[slotid] = item
 			end
 		end
 	end
@@ -1707,6 +1919,111 @@ function FishLib:GetCurrentPlayerPosition()
 	return lC, lZ, x, y;
 end
 
+-- Functions from LibCrayon, since somehow it's crashing some people
+FishLib.COLOR_HEX_RED       = "ff0000"
+FishLib.COLOR_HEX_ORANGE    = "ff7f00"
+FishLib.COLOR_HEX_YELLOW    = "ffff00"
+FishLib.COLOR_HEX_GREEN     = "00ff00"
+FishLib.COLOR_HEX_WHITE     = "ffffff"
+FishLib.COLOR_HEX_COPPER    = "eda55f"
+FishLib.COLOR_HEX_SILVER    = "c7c7cf"
+FishLib.COLOR_HEX_GOLD      = "ffd700"
+FishLib.COLOR_HEX_PURPLE    = "9980CC"
+FishLib.COLOR_HEX_BLUE	   = "0000ff"
+FishLib.COLOR_HEX_CYAN	   = "00ffff"
+FishLib.COLOR_HEX_BLACK	   = "000000"
+
+function FishLib:Colorize(hexColor, text)
+	return "|cff" .. tostring(hexColor or 'ffffff') .. tostring(text) .. "|r"
+end
+function FishLib:Red(text) return self:Colorize(self.COLOR_HEX_RED, text) end
+function FishLib:Orange(text) return self:Colorize(self.COLOR_HEX_ORANGE, text) end
+function FishLib:Yellow(text) return self:Colorize(self.COLOR_HEX_YELLOW, text) end
+function FishLib:Green(text) return self:Colorize(self.COLOR_HEX_GREEN, text) end
+function FishLib:White(text) return self:Colorize(self.COLOR_HEX_WHITE, text) end
+function FishLib:Copper(text) return self:Colorize(self.COLOR_HEX_COPPER, text) end
+function FishLib:Silver(text) return self:Colorize(self.COLOR_HEX_SILVER, text) end
+function FishLib:Gold(text) return self:Colorize(self.COLOR_HEX_GOLD, text) end
+function FishLib:Purple(text) return self:Colorize(self.COLOR_HEX_PURPLE, text) end
+function FishLib:Blue(text) return self:Colorize(self.COLOR_HEX_BLUE, text) end
+function FishLib:Cyan(text) return self:Colorize(self.COLOR_HEX_CYAN, text) end
+function FishLib:Black(text) return self:Colorize(self.COLOR_HEX_BLACK, text) end
+
+local inf = math.huge
+
+local function GetThresholdPercentage(quality, ...)
+	local n = select('#', ...)
+	if n <= 1 then
+		return GetThresholdPercentage(quality, 0, ... or 1)
+	end
+
+	local worst = ...
+	local best = select(n, ...)
+
+	if worst == best and quality == worst then
+		return 0.5
+	end
+
+	if worst <= best then
+		if quality <= worst then
+			return 0
+		elseif quality >= best then
+			return 1
+		end
+		local last = worst
+		for i = 2, n-1 do
+			local value = select(i, ...)
+			if quality <= value then
+				return ((i-2) + (quality - last) / (value - last)) / (n-1)
+			end
+			last = value
+		end
+
+		local value = select(n, ...)
+		return ((n-2) + (quality - last) / (value - last)) / (n-1)
+	else
+		if quality >= worst then
+			return 0
+		elseif quality <= best then
+			return 1
+		end
+		local last = worst
+		for i = 2, n-1 do
+			local value = select(i, ...)
+			if quality >= value then
+				return ((i-2) + (quality - last) / (value - last)) / (n-1)
+			end
+			last = value
+		end
+
+		local value = select(n, ...)
+		return ((n-2) + (quality - last) / (value - last)) / (n-1)
+	end
+end
+
+function FishLib:GetThresholdColor(quality, ...)
+	if quality ~= quality or quality == inf or quality == -inf then
+		return 1, 1, 1
+	end
+
+	local percent = GetThresholdPercentage(quality, ...)
+
+	if percent <= 0 then
+		return 1, 0, 0
+	elseif percent <= 0.5 then
+		return 1, percent*2, 0
+	elseif percent >= 1 then
+		return 0, 1, 0
+	else
+		return 2 - percent*2, 1, 0
+	end
+end
+
+function FishLib:GetThresholdHexColor(quality, ...)
+	local r, g, b = self:GetThresholdColor(quality, ...)
+	return string.format("%02x%02x%02x", r*255, g*255, b*255)
+end
+
 -- translation support functions
 -- replace #KEYWORD# with the value of keyword (which might be a color)
 local function FixupThis(target, tag, what)
@@ -1728,10 +2045,10 @@ local function FixupThis(target, tag, what)
 				local s2 = strsub(what, e+1);
 				what = s1..target[w]..s2;
 				s,e,w = string.find(what, pattern);
-			elseif ( Crayon and Crayon["COLOR_HEX_"..w] ) then
+			elseif ( FishLib["COLOR_HEX_"..w] ) then
 				local s1 = strsub(what, 1, s-1);
 				local s2 = strsub(what, e+1);
-				what = s1.."ff"..Crayon["COLOR_HEX_"..w]..s2;
+				what = s1.."ff"..FishLib["COLOR_HEX_"..w]..s2;
 				s,e,w = string.find(what, pattern);
 			else
 				-- stop if we can't find something to replace it with
@@ -1759,7 +2076,7 @@ local function FixupStrings(target)
 end
 
 local function FixupBindings(target)
-	for tag,str in pairs(target) do		
+	for tag,str in pairs(target) do
 		if ( string.find(tag, "^BINDING") ) then
 			setglobal(tag, target[tag]);
 			target[tag] = nil;
