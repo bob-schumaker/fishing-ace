@@ -1,13 +1,15 @@
 ## Interface: 90002
 ## Title: Fishing Ace! |cff7fff7f -Ace3-|r
-## Version: 0.9
+## Version: 0.9.1
 ## Notes: Simple right click casting.
 ## Notes-zhCN: ����˫�����㡣
 ## Notes-zhTW: �����p����~��
 ## Author: Sutorix
 ## X-Category: Tradeskill
 ## X-AceForum: http://forums.wowace.com/showthread.php?t=4506
-##  X-RelSite-Curse: http://wow.curse.com/downloads/wow-addons/details/fishingbuddy.aspx
+## X-RelSite-Curse: http://wow.curse.com/downloads/wow-addons/details/fishingbuddy.aspx
+## X-Curse-Project-ID: 13845
+## X-WoWI-ID: 6830
 ## X-Embeds: Ace3
 ## OptionalDeps: Ace3
 ## SavedVariablesPerCharacter: FishingAceDB
@@ -15,3 +17,4 @@
 Embeds.xml
 Locales\Locales.xml
 FishingAce.lua
+
