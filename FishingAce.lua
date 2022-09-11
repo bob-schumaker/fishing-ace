@@ -399,7 +399,6 @@ function FishingAce:OnEnable()
 	self:RegisterEvent("PLAYER_LEAVING_WORLD")
 	self:RegisterEvent("ITEM_LOCK_CHANGED")
 	self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
-	self:RegisterEvent("SPELLS_CHANGED")
 	self:RegisterEvent("PLAYER_REGEN_ENABLED")
 	self:RegisterEvent("PLAYER_REGEN_DISABLED")
 	self:RegisterEvent("LOOT_OPENED")
@@ -418,11 +417,6 @@ function FishingAce:OnDisable()
 	if ( FishingBuddy and FishingBuddy.Message ) then
          FishingBuddy.Message(L["FishingAce on standby, easy cast enabled."]);
 	end
-end
-
-function FishingAce:SPELLS_CHANGED()
-	-- Fishing might have moved, go look again
-	FL:GetFishingSkillInfo(true)
 end
 
 function FishingAce:ITEM_LOCK_CHANGED()
@@ -457,11 +451,9 @@ end
 function FishingAce:PLAYER_ENTERING_WORLD()
 	self:RegisterEvent("ITEM_LOCK_CHANGED")
 	self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
-	self:RegisterEvent("SPELLS_CHANGED")
 end
 
 function FishingAce:PLAYER_LEAVING_WORLD()
 	self:UnregisterEvent("ITEM_LOCK_CHANGED")
 	self:UnregisterEvent("PLAYER_EQUIPMENT_CHANGED")
-	self:UnregisterEvent("SPELLS_CHANGED")
 end
