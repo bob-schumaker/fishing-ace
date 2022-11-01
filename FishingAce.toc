@@ -10,6 +10,7 @@
 ## X-RelSite-Curse: http://wow.curse.com/downloads/wow-addons/details/fishingbuddy.aspx
 ## X-Curse-Project-ID: 13845
 ## X-WoWI-ID: 6830
+## X-Wago-ID: RXKqld6y
 ## X-Embeds: Ace3
 ## OptionalDeps: Ace3
 ## SavedVariablesPerCharacter: FishingAceDB
