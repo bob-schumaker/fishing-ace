@@ -372,12 +372,30 @@ local function SetupLure()
 	return false
 end
 
--- handle mouse up and mouse down in the WorldFrame so that we can steal
--- the hardware events to implement 'Easy Cast'
--- Thanks to the Cosmos team for figuring this one out -- I didn't realize
--- that the mouse handler in the WorldFrame got everything first!
-local function WF_OnMouseDown(...)
-	-- Only steal 'right clicks' (self is arg #1!)
+function FishingAce:OnEnable()
+	self:RegisterEvent("PLAYER_ENTERING_WORLD")
+	self:RegisterEvent("PLAYER_LEAVING_WORLD")
+	self:RegisterEvent("ITEM_LOCK_CHANGED")
+	self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
+	self:RegisterEvent("PLAYER_REGEN_ENABLED")
+	self:RegisterEvent("PLAYER_REGEN_DISABLED")
+	self:RegisterEvent("LOOT_OPENED")
+	self:RegisterEvent("GLOBAL_MOUSE_DOWN")
+	
+	if ( FishingBuddy and FishingBuddy.Message ) then
+         FishingBuddy.Message(L["FishingAce is active, easy cast disabled."]);
+	end
+end
+
+function FishingAce:OnDisable()
+	self:UnregisterAllEvents()
+	FL:ResetOverride();
+	if ( FishingBuddy and FishingBuddy.Message ) then
+         FishingBuddy.Message(L["FishingAce on standby, easy cast enabled."])
+	end
+end
+
+function FishingAce:GLOBAL_MOUSE_DOWN(...)
 	local button = select(2, ...)
 	if ( FL:CheckForDoubleClick(button) and HijackCheck() ) then
 		-- We're stealing the mouse-up event, make sure we exit MouseLook
@@ -388,34 +406,6 @@ local function WF_OnMouseDown(...)
 			FL:InvokeFishing(FishingAce.db.profile.action)
 		end
 		FL:OverrideClick(HideAwayAll)
-	end
-end
-
-function FishingAce:OnEnable()
-	if not self:IsHooked(WorldFrame, "OnMouseDown") then
-		self:HookScript(WorldFrame, "OnMouseDown", WF_OnMouseDown)
-	end
-	self:RegisterEvent("PLAYER_ENTERING_WORLD")
-	self:RegisterEvent("PLAYER_LEAVING_WORLD")
-	self:RegisterEvent("ITEM_LOCK_CHANGED")
-	self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
-	self:RegisterEvent("PLAYER_REGEN_ENABLED")
-	self:RegisterEvent("PLAYER_REGEN_DISABLED")
-	self:RegisterEvent("LOOT_OPENED")
-	
-	if ( FishingBuddy and FishingBuddy.Message ) then
-         FishingBuddy.Message(L["FishingAce is active, easy cast disabled."]);
-	end
-end
-
-function FishingAce:OnDisable()
-	self:UnregisterAllEvents()
-	if self:IsHooked(WorldFrame, "OnMouseDown") then
-		self:Unhook(WorldFrame, "OnMouseDown")
-	end
-	FL:ResetOverride();
-	if ( FishingBuddy and FishingBuddy.Message ) then
-         FishingBuddy.Message(L["FishingAce on standby, easy cast enabled."]);
 	end
 end
 

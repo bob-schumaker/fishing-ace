@@ -10,7 +10,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 local _
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 101085
+local MINOR_VERSION = 101091
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -20,28 +20,61 @@ if not FishLib then
 end
 
 local WOW = {};
-function FishLib:WOWVersion()
-    return WOW.major, WOW.minor, WOW.dot, WOW.classic;
-end
-
-function FishLib:IsClassic()
-    return WOW.classic;
-end
-
 if ( GetBuildInfo ) then
-    local v, b, d = GetBuildInfo();
+    local v, b, d, i = GetBuildInfo();
     WOW.build = b;
     WOW.date = d;
     local s,e,maj,min,dot = string.find(v, "(%d+).(%d+).(%d+)");
     WOW.major = tonumber(maj);
     WOW.minor = tonumber(min);
     WOW.dot = tonumber(dot);
-    WOW.classic = (_G.WOW_PROJECT_ID ~= _G.WOW_PROJECT_MAINLINE)
+    WOW.interface = tonumber(i)
 else
     WOW.major = 1;
     WOW.minor = 9;
     WOW.dot = 0;
-    WOW.classic = true
+    WOW.interface = 10900
+end
+
+local function IsRetail()
+    return (_G.WOW_PROJECT_ID == _G.WOW_PROJECT_MAINLINE)
+end
+
+local function IsClassic()
+    return not IsRetail()
+end
+
+local function IsVanilla()
+    return (_G.WOW_PROJECT_ID == _G.WOW_PROJECT_CLASSIC)
+end
+
+local function IsCrusade()
+    return IsClassic() and WOW.interface >= 20500 and WOW.interface < 30000 
+end
+
+local function IsWrath()
+    return not IsRetail() and WOW.interface >= 30400 and WOW.interface < 40000
+end
+
+
+function FishLib:WOWVersion()
+    return WOW.major, WOW.minor, WOW.dot, IsClassic();
+end
+
+function FishLib:IsRetail()
+    return IsRetail()
+end
+
+function FishLib:IsClassic()
+    return IsClassic()
+end
+
+function FishLib:IsVanilla()
+    return IsVanilla()
+end
+
+function FishLib:IsCrusade()
+    return IsCrusade()
 end
 
 -- Some code suggested by the author of LibBabble-SubZone so I don't have
@@ -66,7 +99,15 @@ local BSZ = FishLib_GetLocaleLibBabble("LibBabble-SubZone-3.0");
 local BSL = LibStub("LibBabble-SubZone-3.0"):GetBaseLookupTable();
 local BSZR = LibStub("LibBabble-SubZone-3.0"):GetReverseLookupTable();
 local HBD = LibStub("HereBeDragons-2.0");
-local LT = LibStub("LibTourist-3.0");
+
+local LT
+if IsVanilla() then
+    LT = LibStub("LibTouristClassicEra");
+elseif IsClassic() then
+    LT = LibStub("LibTouristClassic-1.0");
+else
+    LT = LibStub("LibTourist-3.0");
+end
 
 FishLib.HBD = HBD
 
@@ -75,7 +116,7 @@ if not lastVersion then
     FishLib.gearcheck = true
     FishLib.hasgear = false;
     FishLib.PLAYER_SKILL_READY = "PlayerSkillReady"
-    FishLib.havedata = WOW.classic;
+    FishLib.havedata = IsClassic();
 end
 
 FishLib.registered = FishLib.registered or CBH:New(FishLib, nil, nil, false)
@@ -85,11 +126,39 @@ local SABUTTONNAME = "LibFishingSAButton";
 FishLib.UNKNOWN = "UNKNOWN";
 
 function FishLib:GetFishingProfession()
-    local _, _, _, fishing, _, _ = GetProfessions();
+    local Fishing
+    if self:IsClassic() then
+        fishing, _ = self:GetFishingSpellInfo();
+    else
+        _, _, _, fishing, _, _ = GetProfessions();
+    end
     return fishing
 end
 
+-- support finding the fishing skill in classic
+local function FindSpellID(thisone)
+    local id = 1;
+    local spellTexture = GetSpellTexture(id);
+    while (spellTexture) do
+        if (spellTexture and spellTexture == thisone) then
+            return id;
+        end
+        id = id + 1;
+        spellTexture = GetSpellTexture(id);
+    end
+    return nil;
+end
+
 function FishLib:GetFishingSpellInfo()
+    if self:IsClassic() then
+        local spell = FindSpellID("Interface\\Icons\\Trade_Fishing");
+        if spell then
+            local name, _, _ = GetSpellInfo(spell);
+            return spell, name;
+        end
+        return 9, PROFESSIONS_FISHING;
+    end
+
     local fishing = self:GetFishingProfession();
     if not fishing then
         return 9, PROFESSIONS_FISHING
@@ -121,6 +190,10 @@ FishLib.continent_fishing = {
     { ["max"] = 175, ["skillid"] = 2585, ["cat"] = 1114, ["rank"] = 0 },	-- Zandalar Fishing
     { ["max"] = 200, ["skillid"] = 2754, ["cat"] = 1391, ["rank"] = 0 },	-- Shadowlands Fishing
 }
+
+if IsCrusade() then
+    FishLib.continent_fishing[2].max = 375
+end
 
 local FISHING_LEVELS = {
     300,        -- Classic
@@ -977,7 +1050,7 @@ local infoslot = nil;
 function FishLib:GetInfoSlot()
     if not infoslot then
         infoslot = {}
-        for idx=1,17,1 do
+        for idx=1,18,1 do
             infoslot[slotinfo[idx].id] = slotinfo[idx]
         end
     end
@@ -1449,9 +1522,10 @@ end
 
 -- look for double clicks
 function FishLib:CheckForDoubleClick(button)
-    if (button and button ~= self:GetSAMouseButton()) then
+    if FishLib.MapButton[button] ~= self.buttonevent then
         return false;
     end
+    self:ResetOverride()
     if ( not LootFrame:IsShown() and self.lastClickTime ) then
         local pressTime = GetTime();
         local doubleTime = pressTime - self.lastClickTime;
@@ -1984,7 +2058,7 @@ function FishLib:CreateSAButton()
         btn = CreateFrame("Button", SABUTTONNAME, holder, "SecureActionButtonTemplate");
         btn.holder = holder;
         btn:EnableMouse(true);
-        btn:RegisterForClicks(nil);
+        btn:RegisterForClicks();
         btn:Show();
 
         holder:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", 0, 0);
@@ -2032,6 +2106,12 @@ FishLib.CastingKeys[FishLib.MOUSE1] = "BUTTON2";
 FishLib.CastingKeys[FishLib.MOUSE2] = "BUTTON4";
 FishLib.CastingKeys[FishLib.MOUSE3] = "BUTTON5";
 FishLib.CastingKeys[FishLib.MOUSE4] = "BUTTON3";
+FishLib.MapButton = {};
+FishLib.MapButton["RightButton"] = FishLib.MOUSE1;
+FishLib.MapButton["Button4"] = FishLib.MOUSE2;
+FishLib.MapButton["Button5"] = FishLib.MOUSE3;
+FishLib.MapButton["MiddleButton"] = FishLib.MOUSE4;
+
 
 function FishLib:GetSAMouseEvent()
     if (not self.buttonevent) then
@@ -2056,7 +2136,7 @@ function FishLib:SetSAMouseEvent(buttonevent)
         self.buttonevent = buttonevent;
         local btn = _G[SABUTTONNAME];
         if ( btn ) then
-            btn:RegisterForClicks(nil);
+            btn:RegisterForClicks();
             btn:RegisterForClicks(self.buttonevent);
         end
         return true;
@@ -2071,17 +2151,13 @@ function FishLib:InvokeFishing(useaction)
     end
     local id, name = self:GetFishingSpellInfo();
     local findid = self:GetFishingActionBarID();
+    local buttonkey = self:GetSAMouseKey();
     if ( not useaction or not findid ) then
-        btn:SetAttribute("type", "spell");
-        btn:SetAttribute("spell", id);
-        btn:SetAttribute("action", nil);
+        SetOverrideBindingSpell(btn, true, buttonkey, name)
     else
-        btn:SetAttribute("type", "action");
-        btn:SetAttribute("action", findid);
-        btn:SetAttribute("spell", nil);
+        SetOverrideBinding(GetHandleFrame(self), true, key, findid);
     end
-    btn:SetAttribute("item", nil);
-    btn:SetAttribute("target-slot", nil);
+    btn:SetScript("PostClick", ClickHandled);
     -- btn.postclick = nil;
 end
 
@@ -2115,20 +2191,9 @@ function FishLib:InvokeMacro(macrotext)
     if ( not btn ) then
         return;
     end
-    btn:SetAttribute("type", "macro");
-    if (macrotext.find(macrotext, "/")) then
-        btn:SetAttribute("macrotext", macrotext);
-        btn:SetAttribute("macro", nil);
-    else
-        btn:SetAttribute("macrotext", nil);
-        btn:SetAttribute("macro", macrotext);
-    end
-    btn:SetAttribute("item", nil);
-    btn:SetAttribute("target-slot", nil);
-    btn:SetAttribute("spell", nil);
-    btn:SetAttribute("action", nil);
-    btn:SetAttribute("unit", nil)
-    -- btn.postclick = nil;
+    local buttonkey = self:GetSAMouseKey();
+    SetOverrideBindingMacro(btn, true, buttonkey, macrotext)
+    btn:SetScript("PostClick", ClickHandled);
 end
 
 function FishLib:OverrideClick(postclick)
@@ -2136,11 +2201,9 @@ function FishLib:OverrideClick(postclick)
     if ( not btn ) then
         return;
     end
-    local buttonkey = self:GetSAMouseKey();
     fishlibframe.fl = self;
     btn.fl = self;
     btn.postclick = postclick;
-    SetOverrideBindingClick(btn, true, buttonkey, SABUTTONNAME);
     btn.holder:Show();
 end
 
