@@ -10,7 +10,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 local _
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 101091
+local MINOR_VERSION = 101093
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -125,6 +125,18 @@ FishLib.registered = FishLib.registered or CBH:New(FishLib, nil, nil, false)
 local SABUTTONNAME = "LibFishingSAButton";
 FishLib.UNKNOWN = "UNKNOWN";
 
+-- GetItemInfo indexes
+FishLib.ITEM_NAME = 1
+FishLib.ITEM_LINK = 2
+FishLib.ITEM_QUALITY = 3
+FishLib.ITEM_LEVEL = 4
+FishLib.ITEM_MINLEVEL = 5
+FishLib.ITEM_TYPE = 6
+FishLib.ITEM_SUBTYPE = 7
+FishLib.ITEM_STACK = 8
+FishLib.ITEM_EQUIPLOC = 9
+FishLib.ITEM_ICON = 10
+
 function FishLib:GetFishingProfession()
     local Fishing
     if self:IsClassic() then
@@ -213,16 +225,13 @@ local OpenTradeSkill = C_TradeSkillUI.OpenTradeSkill
 local GetTradeSkillLine = C_TradeSkillUI.GetTradeSkillLine
 local GetCategoryInfo = C_TradeSkillUI.GetCategoryInfo
 local CloseTradeSkill = C_TradeSkillUI.CloseTradeSkill
-local itsempty = C_TradeSkillUI.IsEmptySkillLineCategory
 
 function FishLib:UpdateFishingSkillData()
     for _,info in pairs(self.continent_fishing) do
-        if (itsempty(info.cat)) then
-            local data = GetCategoryInfo(info.cat);
-            -- info.max = data.skillLineMaxLevel
-            info.rank = data.skillLineCurrentLevel
-            self.havedata = true
-        end
+        local data = C_TradeSkillUI.GetCategoryInfo(info.cat);
+        -- info.max = data.skillLineMaxLevel
+        info.rank = data.skillLineCurrentLevel
+        self.havedata = true
     end
 end
 
@@ -364,7 +373,7 @@ local DRAENOR_HATS = {
 local NATS_HATS = {
     {	["id"] = 88710,
         ["enUS"] = "Nat's Hat",						-- 150 for 10 mins
-        spell = 7823,
+        spell = 128587,
         ["b"] = 10,
         ["s"] = 100,
         ["d"] = 10,
@@ -372,7 +381,7 @@ local NATS_HATS = {
     },
     {	["id"] = 117405,
         ["enUS"] = "Nat's Drinking Hat",			-- 150 for 10 mins
-        spell = 124034,
+        spell = 128587,
         ["b"] = 10,
         ["s"] = 100,
         ["d"] = 10,
@@ -380,7 +389,7 @@ local NATS_HATS = {
     },
     {	["id"] = 33820,
         ["enUS"] = "Weather-Beaten Fishing Hat",	-- 75 for 10 minutes
-        spell = 7823,
+        spell = 43699,
         ["b"] = 7,
         ["s"] = 1,
         ["d"] = 10,
@@ -399,7 +408,7 @@ local FISHINGLURES = {
     },
     {	["id"] = 116825,
         ["enUS"] = "Savage Fishing Pole",			-- 200 for 10 minutes
-        spell = 59731,
+        spell = 175369,
         ["b"] = 10,
         ["s"] = 1,
         ["d"] = 20,									 -- 20 minute cooldown
@@ -408,7 +417,7 @@ local FISHINGLURES = {
 
     {	["id"] = 34832,
         ["enUS"] = "Captain Rumsey's Lager",		 -- 10 for 3 mins
-        spell = 45694,
+        spell = 45695,
         ["b"] = 5,
         ["s"] = 1,
         ["d"] = 3,
@@ -889,7 +898,7 @@ local slotinfo = {
     [14] = { name = "Finger1Slot", tooltip = FINGER1SLOT, id = INVSLOT_FINGER2, transmog = false },
     [15] = { name = "Trinket0Slot", tooltip = TRINKET0SLOT, id = INVSLOT_TRINKET1, transmog = false },
     [16] = { name = "Trinket1Slot", tooltip = TRINKET1SLOT, id = INVSLOT_TRINKET2, transmog = false },
-    [17] = { name = "MainHandSlot", tooltip = MAINHANDSLOT, id = INVSLOT_MAINHAND, transmog = true },
+    [17] = { name = "FishingToolSlot", tooltip = MAINHANDSLOT, id = 28, transmog = false },
     [18] = { name = "SecondaryHandSlot", tooltip = SECONDARYHANDSLOT, id = INVSLOT_OFFHAND, transmog = true },
 }
 
@@ -1045,6 +1054,17 @@ FishLib.FishingLevels = {
     [22] = 225,
     [181] = 425,
 }
+
+local infonames = nil;
+function FishLib:GetInfoNames()
+    if not infonames then
+        infonames = {}
+        for idx=1,18,1 do
+            infonames[slotinfo[idx].name] = slotinfo[idx]
+        end
+    end
+    return infonames
+end
 
 local infoslot = nil;
 function FishLib:GetInfoSlot()
@@ -1262,18 +1282,23 @@ function FishLib:SplitLink(link, get_id)
     end
 end
 
-function FishLib:GetItemInfo(link)
+function FishLib:GetItemInfoFields(link, ...)
 -- name, link, rarity, itemlevel, minlevel, itemtype
 -- subtype, stackcount, equiploc, texture
     if (link) then
         link = self:ValidLink(link)
-        local itemName, itemLink, itemRarity, itemLevel, itemMinLevel, itemType, itemSubType, itemStackCount, itemEquipLoc, itemTexture, itemSellPrice = GetItemInfo(link);
-        return itemName, itemLink, itemRarity, itemMinLevel, itemType, itemSubType, itemStackCount, itemEquipLoc, itemTexture, itemLevel, itemSellPrice;
+        local iteminfo = {GetItemInfo(link)}
+        local results = {}
+        for idx = 1, select('#', ...) do
+            local sel_idx = select(idx, ...)
+            tinsert(results, iteminfo[sel_idx])
+        end
+        return unpack(results)
     end
 end
 
 function FishLib:IsLinkableItem(link)
-    local n,l,_,_,_,_,_,_ = self:GetItemInfo(link);
+    local name, link = self:GetItemInfoFields(link, self.ITEM_NAME, self.ITEM_LINK);
     return ( n and l );
 end
 
@@ -1317,13 +1342,13 @@ local fp_subtype = nil;
 
 function FishLib:GetPoleType()
     if ( not fp_itemtype ) then
-        _,_,_,_,fp_itemtype,fp_subtype,_,_,_,_ = self:GetItemInfo(6256);
+        fp_itemtype, fp_subtype = self:GetItemInfoFields(6256, self.ITEM_TYPE, self.ITEM_SUBTYPE);
         if ( not fp_itemtype ) then
             -- make sure it's in our cache
             local tooltip = self:GetFishTooltip();
             tooltip:ClearLines();
             tooltip:SetHyperlink("item:6256");
-            _,_,_,_,fp_itemtype,fp_subtype,_,_,_,_ = self:GetItemInfo(6256);
+            fp_itemtype, fp_subtype = self:GetItemInfoFields(6256, self.ITEM_TYPE, self.ITEM_SUBTYPE);
         end
     end
     return fp_itemtype, fp_subtype;
@@ -1377,7 +1402,7 @@ function FishLib:IsFishingPole(itemLink)
         itemLink = self:GetMainHandItem();
     end
     if ( itemLink ) then
-        local _,itemLink,_,_,itemtype,subtype,_,_,itemTexture,_ = self:GetItemInfo(itemLink);
+        local itemLink,itemtype,subtype,itemTexture = self:GetItemInfoFields(itemLink, self.ITEM_LINK, self.ITEM_TYPE, self.ITEM_SUBTYPE, self.ITEM_ICON);
         local _, id, _ = self:SplitLink(itemLink, true);
 
         self:GetPoleType();
@@ -1434,8 +1459,8 @@ end
 -- fish tracking skill
 function FishLib:GetTrackingID(tex)
     if ( tex ) then
-        for id=1,GetNumTrackingTypes() do
-            local _, texture, _, _ = GetTrackingInfo(id);
+        for id=1,C_Minimap.GetNumTrackingTypes() do
+            local _, texture, _, _ = C_Minimap.GetTrackingInfo(id);
             texture = texture.."";
             if ( texture == tex) then
                 return id;
@@ -1522,6 +1547,7 @@ end
 
 -- look for double clicks
 function FishLib:CheckForDoubleClick(button)
+-- print("CheckForDoubleClick", button, FishLib.MapButton[button], self.buttonevent)
     if FishLib.MapButton[button] ~= self.buttonevent then
         return false;
     end
@@ -1532,6 +1558,7 @@ function FishLib:CheckForDoubleClick(button)
         if ( (doubleTime < ACTIONDOUBLEWAIT) and (doubleTime > MINACTIONDOUBLECLICK) ) then
             if ( not self.watchBobber or not self:OnFishingBobber() ) then
                 self.lastClickTime = nil;
+--                print("CheckForDoubleClick", true)
                 return true;
             end
         end
@@ -2029,6 +2056,7 @@ function FishLib:ResetOverride()
 end
 
 local function ClickHandled(self)
+--    print("ClickHandled", postclick)
     self.fl:ResetOverride();
     if ( self.postclick ) then
         self.postclick();
@@ -2151,6 +2179,7 @@ function FishLib:InvokeFishing(useaction)
     end
     local id, name = self:GetFishingSpellInfo();
     local findid = self:GetFishingActionBarID();
+--    print("InvokeFishing", id, name, findid)
     local buttonkey = self:GetSAMouseKey();
     if ( not useaction or not findid ) then
         SetOverrideBindingSpell(btn, true, buttonkey, name)
@@ -2161,29 +2190,16 @@ function FishLib:InvokeFishing(useaction)
     -- btn.postclick = nil;
 end
 
-function FishLib:InvokeLuring(id, itemtype, targetslot)
+function FishLib:InvokeLuring(id, itemtype)
     local btn = _G[SABUTTONNAME];
     if ( not btn ) then
         return;
     end
     if ( id ) then
+        local buttonkey = self:GetSAMouseKey();
         id = self:ValidLink(id)
-        if (not itemtype) then
-            itemtype = "item";
-            targetslot = INVSLOT_MAINHAND;
-        end
-        btn:SetAttribute("type", itemtype);
-        btn:SetAttribute("item", id);
-        btn:SetAttribute("target-slot", targetslot);
-    else
-        btn:SetAttribute("type", nil);
-        btn:SetAttribute("item", nil);
-        btn:SetAttribute("target-slot", nil);
+        SetOverrideBindingItem(btn, true, buttonkey, id)
     end
-    btn:SetAttribute("spell", nil);
-    btn:SetAttribute("action", nil);
-    btn:SetAttribute("macrotext", nil);
-    -- btn.postclick = nil;
 end
 
 function FishLib:InvokeMacro(macrotext)
@@ -2205,6 +2221,7 @@ function FishLib:OverrideClick(postclick)
     btn.fl = self;
     btn.postclick = postclick;
     btn.holder:Show();
+--    print("OverrideClick")
 end
 
 function FishLib:ClickSAButton()
@@ -2336,7 +2353,7 @@ function FishLib:GetBestFishingItem(slotid, ignore)
         if (not ignore or not ignore[id]) then
             local player, bank, bags, void, slot, bag = EquipmentManager_UnpackLocation(location);
             if ( bags and slot and bag ) then
-                link = GetContainerItemLink(bag, slot);
+                link = C_Container.GetContainerItemLink(bag, slot);
             else
                 link = nil;
             end
@@ -2375,12 +2392,12 @@ end
 -- look in a particular bag
 function FishLib:CheckThisBag(bag, id, skipcount)
     -- get the number of slots in the bag (0 if no bag)
-    local numSlots = GetContainerNumSlots(bag);
+    local numSlots = C_Container.GetContainerNumSlots(bag);
     if (numSlots > 0) then
         -- check each slot in the bag
         id = tonumber(id)
         for slot=1, numSlots do
-            local i = GetContainerItemID(bag, slot);
+            local i = C_Container.GetContainerItemID(bag, slot);
             if ( i and id == i ) then
                 if ( skipcount == 0 ) then
                     return slot, skipcount;
