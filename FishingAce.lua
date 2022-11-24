@@ -389,7 +389,6 @@ end
 
 function FishingAce:OnDisable()
 	self:UnregisterAllEvents()
-	FL:ResetOverride();
 	if ( FishingBuddy and FishingBuddy.Message ) then
          FishingBuddy.Message(L["FishingAce on standby, easy cast enabled."])
 	end
@@ -415,14 +414,6 @@ end
 
 function FishingAce:PLAYER_EQUIPMENT_CHANGED()
 	FishingMode(self)
-end
-
-function FishingAce:PLAYER_REGEN_DISABLED()
-	FL:ResetOverride();
-end
-
-function FishingAce:PLAYER_REGEN_ENABLED()
-	FL:ResetOverride();
 end
 
 function FishingAce:LOOT_OPENED()
