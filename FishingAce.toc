@@ -1,6 +1,6 @@
 ## Interface: 90207
 ## Title: Fishing Ace! |cff7fff7f -Ace3-|r
-## Version: 0.9.1
+## Version: 0.9.3
 ## Notes: Simple right click casting.
 ## Notes-zhCN: ����˫�����㡣
 ## Notes-zhTW: �����p����~��
