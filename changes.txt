@@ -1,2 +1,8 @@
+Versio 0.9.6:
+- Remove unused registered events
+
+Version 0.9.5
+- First cut a Shadowlands version
+
 Version 0.9
 - update fishing library

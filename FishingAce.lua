@@ -377,8 +377,6 @@ function FishingAce:OnEnable()
 	self:RegisterEvent("PLAYER_LEAVING_WORLD")
 	self:RegisterEvent("ITEM_LOCK_CHANGED")
 	self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
-	self:RegisterEvent("PLAYER_REGEN_ENABLED")
-	self:RegisterEvent("PLAYER_REGEN_DISABLED")
 	self:RegisterEvent("LOOT_OPENED")
 	self:RegisterEvent("GLOBAL_MOUSE_DOWN")
 	
