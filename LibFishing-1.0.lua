@@ -10,7 +10,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 local _
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 101093
+local MINOR_VERSION = 101102
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -75,6 +75,16 @@ end
 
 function FishLib:IsCrusade()
     return IsCrusade()
+end
+
+local BlizzardTradeSkillUI
+local BlizzardTradeSkillFrame
+if IsRetail() then
+	BlizzardTradeSkillUI = "Blizzard_Professions";
+	BlizzardTradeSkillFrame = "ProfessionsFrame";
+else
+	BlizzardTradeSkillUI = "Blizzard_TradeSkillUI";
+	BlizzardTradeSkillFrame = "TradeSkillFrame";
 end
 
 -- Some code suggested by the author of LibBabble-SubZone so I don't have
@@ -188,9 +198,8 @@ function FishLib:GetFishingSpellInfo()
     return id, name
 end
 
-local DEFAULT_SKILL = { ["max"] = 300, ["skillid"] = 356, ["cat"] = 1100, ["rank"] = 0 }
 FishLib.continent_fishing = {
-    { ["max"] = 300, ["skillid"] = 356, ["cat"] = 1100, ["rank"] = 0 },	-- 2592?
+    { ["max"] = 300, ["skillid"] = 356, ["cat"] = 1100, ["rank"] = 0 },	-- Default -- 2592?
     { ["max"] = 300, ["skillid"] = 356, ["cat"] = 1100, ["rank"] = 0 },
     { ["max"] = 75, ["skillid"] = 2591, ["cat"] = 1102, ["rank"] = 0 },	-- Outland Fishing
     { ["max"] = 75, ["skillid"] = 2590, ["cat"] = 1104, ["rank"] = 0 },	-- Northrend Fishing
@@ -201,7 +210,9 @@ FishLib.continent_fishing = {
     { ["max"] = 175, ["skillid"] = 2585, ["cat"] = 1114, ["rank"] = 0 },	-- Kul Tiras Fishing
     { ["max"] = 175, ["skillid"] = 2585, ["cat"] = 1114, ["rank"] = 0 },	-- Zandalar Fishing
     { ["max"] = 200, ["skillid"] = 2754, ["cat"] = 1391, ["rank"] = 0 },	-- Shadowlands Fishing
+	{ ["max"] = 100, ["skillid"] = 2826, ["cat"] = 1805, ["rank"] = 0 },	-- Dragonflight Fishing
 }
+local DEFAULT_SKILL = FishLib.continent_fishing[1];
 
 if IsCrusade() then
     FishLib.continent_fishing[2].max = 375
@@ -217,6 +228,7 @@ local FISHING_LEVELS = {
     100,        -- Legion
     175,        -- BfA
     200,        -- Shadowlands
+	100,        -- Dragonflight
 }
 
 local CHECKINTERVAL = 0.5
@@ -227,11 +239,16 @@ local GetCategoryInfo = C_TradeSkillUI.GetCategoryInfo
 local CloseTradeSkill = C_TradeSkillUI.CloseTradeSkill
 
 function FishLib:UpdateFishingSkillData()
-    for _,info in pairs(self.continent_fishing) do
-        local data = C_TradeSkillUI.GetCategoryInfo(info.cat);
-        -- info.max = data.skillLineMaxLevel
-        info.rank = data.skillLineCurrentLevel
-        self.havedata = true
+	local categories = {C_TradeSkillUI.GetCategories()}
+	for _, categoryID in pairs(categories) do
+        for _, info in pairs(self.continent_fishing) do
+            if (categoryID == info.cat) then
+                local data = C_TradeSkillUI.GetCategoryInfo(info.cat);
+			    --info.max = data.skillLineMaxLevel
+                info.rank = data.skillLineCurrentLevel
+                self.havedata = true
+            end
+        end
     end
 end
 
@@ -263,8 +280,8 @@ local function SkillInitialize(self, elapsed)
         if self.state == 0 then
             if TradeSkillFrame then
                 self.state = self.state + 1
-                self.tsfpanel = UIPanelWindows["TradeSkillFrame"]
-                UIPanelWindows["TradeSkillFrame"] = nil
+                self.tsfpanel = UIPanelWindows[BlizzardTradeSkillFrame]
+                UIPanelWindows[BlizzardTradeSkillFrame] = nil
                 self.tsfpos = {}
                 for idx=1,TradeSkillFrame:GetNumPoints() do
                     tinsert(self.tsfpos, {TradeSkillFrame:GetPoint(idx)})
@@ -290,7 +307,7 @@ local function SkillInitialize(self, elapsed)
                 end
             end
             if self.tsfpanel then
-                UIPanelWindows["TradeSkillFrame"] = self.tsfpanel
+                UIPanelWindows[BlizzardTradeSkillFrame] = self.tsfpanel
             end
             self.tsfpanel = nil
             self.tsfpos = nil
@@ -309,8 +326,8 @@ function FishLib:GetTradeSkillData()
     end
     local btn = _G[SABUTTONNAME];
     if btn then
-        if (not IsAddOnLoaded("Blizzard_TradeSkillUI")) then
-            LoadAddOn("Blizzard_TradeSkillUI");
+        if (not IsAddOnLoaded(BlizzardTradeSkillUI)) then
+            LoadAddOn(BlizzardTradeSkillUI);
         end
         btn.skillupdate:SetScript("OnUpdate", SkillInitialize);
         btn.skillupdate:Show()
@@ -417,7 +434,7 @@ local FISHINGLURES = {
 
     {	["id"] = 34832,
         ["enUS"] = "Captain Rumsey's Lager",		 -- 10 for 3 mins
-        spell = 45695,
+        spell = 45694,
         ["b"] = 5,
         ["s"] = 1,
         ["d"] = 3,
@@ -644,20 +661,20 @@ end
 local spellidx = nil;
 function FishLib:GetBuff(buffId)
     if ( buffId ) then
-        for i=1,40 do
-            local current_buff = UnitBuff("player",i);
+        for idx=1,40 do
+            local current_buff = UnitBuff("player", idx);
             if current_buff then
-                local info = {UnitBuff("player", i)}
+                local info = {UnitBuff("player", idx)}
                 local spellid = select(10, unpack(info));
                 if (buffId == spellid) then
-                    return unpack(info)
+                    return idx, info
                 end
             else
-                return nil
+                return nil, nil
             end
         end
     end
-    -- return nil
+    return nil, nil
 end
 
 function FishLib:HasBuff(buffId, skipWait)
@@ -666,22 +683,26 @@ function FishLib:HasBuff(buffId, skipWait)
         if ( not skipWait and BuffWatch[buffId] ) then
             return true, GetTime() + 10
         else
-            for i=1,40 do
-                local info = {UnitBuff("player", i)}
-                local current_buff = select(1, unpack(info))
-                if current_buff then
-                    local spellid = select(10, unpack(info));
-                    if (buffId == spellid) then
-                        local et = select(6, unpack(info));
-                        return true, et;
-                    end
-                else
-                    return nil, nil
-                end
+            local idx, info = self:GetBuff(buffId);
+            if idx then
+                local et = select(6, unpack(info));
+                return true, et;
             end
         end
     end
-    -- return nil
+    return nil, nil
+end
+
+function FishLib:CancelBuff(buffId)
+    if buffId then
+        if BuffWatch[buffId] then
+            BuffWatch[buffId] = nil
+        end
+        local idx, info = self:GetBuff(buffId);
+        if idx then
+            CancelUnitBuff("player", idx)
+        end
+    end
 end
 
 function FishLib:HasAnyBuff(buffs)
@@ -692,6 +713,10 @@ function FishLib:HasAnyBuff(buffs)
         end
     end
     -- return nil
+end
+
+function FishLib:FishingForAttention()
+    return self:HasBuff(394009)
 end
 
 function FishLib:HasLureBuff()
@@ -772,7 +797,8 @@ function FishLib:FindBestLure(b, state, usedrinks, forcemax)
             skill = skill - enchant;
             state = state or 0;
             local checklure;
-            local useit, b = 0;
+            local useit;
+            local b = 0;
 
             -- Look for lures we're wearing, first
             for s=state+1,#lureinventory,1 do
@@ -833,6 +859,8 @@ if ( not fishlibframe) then
     fishlibframe:RegisterEvent("UNIT_SPELLCAST_CHANNEL_STOP");
     fishlibframe:RegisterEvent("ITEM_LOCK_CHANGED");
 	fishlibframe:RegisterEvent("ACTIONBAR_SLOT_CHANGED");
+	fishlibframe:RegisterEvent("PLAYER_REGEN_ENABLED");
+	fishlibframe:RegisterEvent("PLAYER_REGEN_DISABLED");
     fishlibframe:RegisterEvent("TRADE_SKILL_DATA_SOURCE_CHANGED")
     fishlibframe:RegisterEvent("TRADE_SKILL_LIST_UPDATE")
     fishlibframe:RegisterEvent("EQUIPMENT_SWAP_FINISHED");
@@ -876,11 +904,17 @@ fishlibframe:SetScript("OnEvent", function(self, event, ...)
         self.fl:QueueUpdateFishingSkillData();
     elseif (event == "ACTIONBAR_SLOT_CHANGED") then
         self.fl:GetFishingActionBarID(true)
+    elseif (event == "PLAYER_REGEN_DISABLED") then
+        self.fl:InCombat(true)
+    elseif (event == "PLAYER_REGEN_ENABLED") then
+        self.fl:InCombat(false)
     end
 end);
 fishlibframe:Show();
 
 -- set up a table of slot mappings for looking up item information
+local INVSLOT_FISHING_TOOL = 28;
+
 local slotinfo = {
     [1] = { name = "HeadSlot", tooltip = HEADSLOT, id = INVSLOT_HEAD, transmog = true },
     [2] = { name = "NeckSlot", tooltip = NECKSLOT, id = INVSLOT_NECK, transmog = false },
@@ -898,7 +932,7 @@ local slotinfo = {
     [14] = { name = "Finger1Slot", tooltip = FINGER1SLOT, id = INVSLOT_FINGER2, transmog = false },
     [15] = { name = "Trinket0Slot", tooltip = TRINKET0SLOT, id = INVSLOT_TRINKET1, transmog = false },
     [16] = { name = "Trinket1Slot", tooltip = TRINKET1SLOT, id = INVSLOT_TRINKET2, transmog = false },
-    [17] = { name = "FishingToolSlot", tooltip = MAINHANDSLOT, id = 28, transmog = false },
+    [17] = { name = "FishingToolSlot", tooltip = FISHINGTOOLSLOT, id = INVSLOT_FISHING_TOOL, transmog = false },
     [18] = { name = "SecondaryHandSlot", tooltip = SECONDARYHANDSLOT, id = INVSLOT_OFFHAND, transmog = true },
 }
 
@@ -932,6 +966,7 @@ local slotmap = {
     ["INVTYPE_TABARD"] = { INVSLOT_TABARD },
     ["INVTYPE_BAG"] = { 20,21,22,23 },
     ["INVTYPE_QUIVER"] = { 20,21,22,23 },
+    ["INVTYPE_FISHINGTOOL"] = { INVSLOT_FISHING_TOOL },
     [""] = { },
 };
 
@@ -1392,6 +1427,10 @@ function FishLib:GetMainHandItem(get_id)
     return self:GetWornItem(get_id, INVSLOT_MAINHAND);
 end
 
+function FishLib:GetFishingToolItem(get_id)
+    return self:GetWornItem(get_id, INVSLOT_FISHING_TOOL);
+end
+
 function FishLib:GetHeadItem(get_id)
     return self:GetWornItem(get_id, INVSLOT_HEAD);
 end
@@ -1435,11 +1474,12 @@ function FishLib:IsFishingGear()
     if ( self.gearcheck ) then
         if (self:IsFishingPole()) then
             self.hasgear = true;
-        end
-        for i=1,16,1 do
-            if ( not self.hasgear ) then
-                if (self:FishingBonusPoints(slotinfo[i].id, 1) > 0) then
-                    self.hasgear = true;
+        else
+            for i=1,16,1 do
+                if ( not self.hasgear ) then
+                    if (self:FishingBonusPoints(slotinfo[i].id, 1) > 0) then
+                        self.hasgear = true;
+                    end
                 end
             end
         end
@@ -1547,18 +1587,16 @@ end
 
 -- look for double clicks
 function FishLib:CheckForDoubleClick(button)
--- print("CheckForDoubleClick", button, FishLib.MapButton[button], self.buttonevent)
+    self:ResetOverride()
     if FishLib.MapButton[button] ~= self.buttonevent then
         return false;
     end
-    self:ResetOverride()
-    if ( not LootFrame:IsShown() and self.lastClickTime ) then
+    if ( GetNumLootItems() == 0 and self.lastClickTime ) then
         local pressTime = GetTime();
         local doubleTime = pressTime - self.lastClickTime;
         if ( (doubleTime < ACTIONDOUBLEWAIT) and (doubleTime > MINACTIONDOUBLECLICK) ) then
             if ( not self.watchBobber or not self:OnFishingBobber() ) then
                 self.lastClickTime = nil;
---                print("CheckForDoubleClick", true)
                 return true;
             end
         end
@@ -1611,6 +1649,7 @@ FishLib.BROKEN_ISLES = 8
 FishLib.KUL_TIRAS = 9
 FishLib.ZANDALAR = 10
 FishLib.SHADOWLANDS = 11
+FishLib.DRAGONFLIGHT = 12
 
 -- Darkmoon Island is it's own continent?
 local continent_map = {
@@ -1627,6 +1666,7 @@ local continent_map = {
     [1355] = FishLib.KUL_TIRAS,         -- Nazjatar
     [407] = FishLib.THE_MAELSTROM,      -- Darkmoon Island
     [1550] = FishLib.SHADOWLANDS,       -- Shadowlands
+    [1978] = FishLib.DRAGONFLIGHT,      -- Dragon Isles
 }
 
 local special_maps = {
@@ -1646,6 +1686,7 @@ local special_maps = {
 -- Pandaria, 6, 424
 -- Draenor, 7, 572
 -- Broken Isles, 8, 619
+-- Dragon Isles, 12, 1978
 function FishLib:GetMapContinent(mapId, debug)
     if HBD.mapData[mapId] and mapId then
         local cMapId = mapId;
@@ -1981,7 +2022,7 @@ function FishLib:AddTooltip(text, tooltip)
     if ( text ) then
         if ( type(text) == "table" ) then
             for _,l in pairs(text) do
-                AddTooltipLine(l, tooltip);
+                AddTooltipLine(l);
             end
         else
             -- AddTooltipLine(text, color);
@@ -2038,29 +2079,11 @@ function FishLib:GetFrameInfo(framespec)
     return framespec, n;
 end
 
-local function HideHolder(self)
-    if not UnitAffectingCombat("player") then
-        self.holder:Hide();
-        self:SetScript("OnUpdate", nil);
-    else
-        self:SetScript("OnUpdate", HideHolder);
-    end
-end
-
-function FishLib:ResetOverride()
-    local btn = _G[SABUTTONNAME];
-    if ( btn ) then
-        ClearOverrideBindings(btn);
-        HideHolder(btn)
-    end
-end
-
 local function ClickHandled(self)
---    print("ClickHandled", postclick)
-    self.fl:ResetOverride();
     if ( self.postclick ) then
         self.postclick();
     end
+    self.fl:ResetOverride()
 end
 
 local function BuffUpdate(self, elapsed)
@@ -2073,26 +2096,42 @@ local function BuffUpdate(self, elapsed)
             end
         end
         self.lastUpdate = 0
-        if ( self.lib:tablecount(BuffWatch) ) then
+        if ( self.lib:tablecount(BuffWatch) == 0 ) then
             self:Hide()
         end
+    end
+end
+
+function FishLib:WillTaint()
+    return (InCombatLockdown() or (UnitAffectingCombat("player") or UnitAffectingCombat("pet")))
+end
+
+function FishLib:InCombat(flag)
+    self.combat_flag = flag
+    if not flag then
+        self:ResetOverride()
+    end
+end
+
+function FishLib:ResetOverride(force)
+    if self.combat_flag or self:WillTaint() then
+        self.clear_bindings = true
+    elseif self.clear_bindings or force then
+        local btn = self:CleanSAButton(false);
+        if (  btn ) then
+            ClearOverrideBindings(btn)
+        end
+        self.clear_bindings = false
     end
 end
 
 function FishLib:CreateSAButton()
     local btn = _G[SABUTTONNAME];
     if ( not btn ) then
-        local holder = CreateFrame("Frame", nil, UIParent);
-        btn = CreateFrame("Button", SABUTTONNAME, holder, "SecureActionButtonTemplate");
-        btn.holder = holder;
-        btn:EnableMouse(true);
-        btn:RegisterForClicks();
+        btn = CreateFrame("Button", SABUTTONNAME, nil, "SecureActionButtonTemplate");
+        btn:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", 0, 0);
+        btn:SetFrameStrata("LOW");
         btn:Show();
-
-        holder:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", 0, 0);
-        holder:SetFrameStrata("LOW");
-        holder:SetFrameLevel(0)
-        holder:Hide();
     end
 
     if (not btn.buffupdate) then
@@ -2113,17 +2152,20 @@ function FishLib:CreateSAButton()
     end
 
     if (not self.buttonevent) then
-        self.buttonevent = "RightButtonUp";
+        self.buttonevent = "RightButtonDown";
     end
     btn:SetScript("PostClick", ClickHandled);
+    SecureHandlerWrapScript(btn, "PostClick", btn,  [[
+      self:ClearBindings()
+    ]])
     btn:RegisterForClicks(self.buttonevent);
     btn.fl = self;
 end
 
-FishLib.MOUSE1 = "RightButtonUp";
-FishLib.MOUSE2 = "Button4Up";
-FishLib.MOUSE3 = "Button5Up";
-FishLib.MOUSE4 = "MiddleButtonUp";
+FishLib.MOUSE1 = "RightButtonDown";
+FishLib.MOUSE2 = "Button4Down";
+FishLib.MOUSE3 = "Button5Down";
+FishLib.MOUSE4 = "MiddleButtonDown";
 FishLib.CastButton = {};
 FishLib.CastButton[FishLib.MOUSE1] = "RightButton";
 FishLib.CastButton[FishLib.MOUSE2] = "Button4";
@@ -2143,7 +2185,7 @@ FishLib.MapButton["MiddleButton"] = FishLib.MOUSE4;
 
 function FishLib:GetSAMouseEvent()
     if (not self.buttonevent) then
-        self.buttonevent = "RightButtonUp";
+        self.buttonevent = "RightButtonDown";
     end
     return self.buttonevent;
 end
@@ -2158,7 +2200,7 @@ end
 
 function FishLib:SetSAMouseEvent(buttonevent)
     if (not buttonevent) then
-        buttonevent = "RightButtonUp";
+        buttonevent = "RightButtonDown";
     end
     if (self.CastButton[buttonevent]) then
         self.buttonevent = buttonevent;
@@ -2172,44 +2214,87 @@ function FishLib:SetSAMouseEvent(buttonevent)
     -- return nil;
 end
 
-function FishLib:InvokeFishing(useaction)
+function FishLib:ClearAllAttributes()
     local btn = _G[SABUTTONNAME];
+    if ( not btn ) then
+        return;
+    end
+end
+
+function FishLib:CleanSAButton(override)
+    local btn = _G[SABUTTONNAME];
+    if ( btn ) then
+        for _, attrib in ipairs({"type", "spell", "action", "toy", "item", "target-slot", "unit", "macrotext", "macro"}) do
+            btn:SetAttribute(attrib, nil)
+        end
+    end
+    return btn
+end
+
+function FishLib:SetOverrideBindingClick()
+    local btn = _G[SABUTTONNAME];
+    if ( btn ) then
+        local buttonkey = self:GetSAMouseKey();
+        SetOverrideBindingClick(btn, true, buttonkey, SABUTTONNAME);
+        self.clear_bindings = true
+    end
+end
+
+function FishLib:InvokeFishing(useaction)
+    local btn = self:CleanSAButton(true)
     if ( not btn ) then
         return;
     end
     local id, name = self:GetFishingSpellInfo();
     local findid = self:GetFishingActionBarID();
---    print("InvokeFishing", id, name, findid)
     local buttonkey = self:GetSAMouseKey();
     if ( not useaction or not findid ) then
-        SetOverrideBindingSpell(btn, true, buttonkey, name)
+        btn:SetAttribute("type", "spell");
+        btn:SetAttribute("spell", name);
     else
-        SetOverrideBinding(GetHandleFrame(self), true, key, findid);
+        btn:SetAttribute("type", "action");
+        btn:SetAttribute("action", findid);
     end
-    btn:SetScript("PostClick", ClickHandled);
-    -- btn.postclick = nil;
+    self:SetOverrideBindingClick()
 end
 
 function FishLib:InvokeLuring(id, itemtype)
-    local btn = _G[SABUTTONNAME];
+    local btn = self:CleanSAButton(true)
     if ( not btn ) then
         return;
     end
     if ( id ) then
-        local buttonkey = self:GetSAMouseKey();
         id = self:ValidLink(id)
-        SetOverrideBindingItem(btn, true, buttonkey, id)
+        if itemtype == "toy" then
+            btn:SetAttribute("type", "toy");
+            btn:SetAttribute("toy", id);
+        else
+            if not itemtype then
+                itemtype = "item";
+                targetslot = INVSLOT_FISHING_TOOL;
+            end
+            btn:SetAttribute("type", itemtype);
+            btn:SetAttribute("item", id);
+            btn:SetAttribute("target-slot", targetslot);
+        end
+        self:SetOverrideBindingClick()
     end
 end
 
 function FishLib:InvokeMacro(macrotext)
-    local btn = _G[SABUTTONNAME];
+    local btn = self:CleanSAButton(true)
     if ( not btn ) then
         return;
     end
-    local buttonkey = self:GetSAMouseKey();
-    SetOverrideBindingMacro(btn, true, buttonkey, macrotext)
-    btn:SetScript("PostClick", ClickHandled);
+    btn:SetAttribute("type", "macro");
+    if (macrotext.find(macrotext, "/")) then
+        btn:SetAttribute("macrotext", macrotext);
+        btn:SetAttribute("macro", nil);
+    else
+        btn:SetAttribute("macrotext", nil);
+        btn:SetAttribute("macro", macrotext);
+    end
+    self:SetOverrideBindingClick()
 end
 
 function FishLib:OverrideClick(postclick)
@@ -2220,7 +2305,6 @@ function FishLib:OverrideClick(postclick)
     fishlibframe.fl = self;
     btn.fl = self;
     btn.postclick = postclick;
-    btn.holder:Show();
 --    print("OverrideClick")
 end
 
@@ -2300,7 +2384,11 @@ function FishLib:GetPoleBonus()
         local hmhe,_,_,_,_,_ = GetWeaponEnchantInfo();
         if ( hmhe ) then
             -- IsFishingPole has set mainhand for us
-            local id = self:GetMainHandItem(true);
+            if IsRetail() then
+                local id = self:GetFishingToolItem(true);
+            else
+                local id = self:GetMainHandItem(true);
+            end
             -- get the raw value of the pole without any temp enchants
             local pole = self:FishingBonusPoints(id);
             return total, total - pole;
