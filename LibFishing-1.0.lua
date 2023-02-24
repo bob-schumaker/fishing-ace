@@ -10,7 +10,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 local _
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 101102
+local MINOR_VERSION = 101104
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -49,7 +49,7 @@ local function IsVanilla()
 end
 
 local function IsCrusade()
-    return IsClassic() and WOW.interface >= 20500 and WOW.interface < 30000 
+    return IsClassic() and WOW.interface >= 20500 and WOW.interface < 30000
 end
 
 local function IsWrath()
@@ -148,7 +148,7 @@ FishLib.ITEM_EQUIPLOC = 9
 FishLib.ITEM_ICON = 10
 
 function FishLib:GetFishingProfession()
-    local Fishing
+    local fishing;
     if self:IsClassic() then
         fishing, _ = self:GetFishingSpellInfo();
     else
@@ -603,7 +603,7 @@ end
 
 function FishLib:IsItemOneHanded(item)
     if ( item ) then
-        local _,_,_,_,_,_,_,_,bodyslot,_ = GetItemInfo(item);
+        local bodyslot= self:GetItemInfoFields(item, self.ITEM_EQUIPLOC);
         if ( bodyslot == "INVTYPE_2HWEAPON" or bodyslot == INVTYPE_2HWEAPON ) then
             return false;
         end
@@ -624,7 +624,7 @@ function FishLib:UpdateLureInventory()
         local count = GetItemCount(id);
         -- does this lure have to be "worn"
         if ( count > 0 ) then
-            local startTime, _, _ = GetItemCooldown(id);
+            local startTime, _, _ = C_Container.GetItemCooldown(id);
             if (startTime == 0) then
                 if (lure.w and self:IsWorn(id)) then
                     tinsert(lureinventory, lure);
@@ -740,7 +740,7 @@ end
 -- Deal with lures
 function FishLib:UseThisLure(lure, b, enchant, skill, level)
     if ( lure ) then
-        local startTime, _, _ = GetItemCooldown(lure.id);
+        local startTime, _, _ = C_Container.GetItemCooldown(lure.id);
         -- already check for skill being nil, so that will skip the whole check with level
         -- skill = skill or 0;
         level = level or 0;
@@ -760,7 +760,7 @@ function FishLib:FindNextLure(b, state)
     for s=state+1,n,1 do
         if ( lureinventory[s] ) then
             local id = lureinventory[s].id;
-            local startTime, _, _ = GetItemCooldown(id);
+            local startTime, _, _ = C_Container.GetItemCooldown(id);
             if ( startTime == 0 ) then
                 if ( not b or lureinventory[s].b > b ) then
                     return s, lureinventory[s];
@@ -770,6 +770,8 @@ function FishLib:FindNextLure(b, state)
     end
     -- return nil;
 end
+
+FishLib.LastUsed = nil;
 
 function FishLib:FindBestLure(b, state, usedrinks, forcemax)
     local level = self:GetCurrentFishingLevel();
@@ -785,10 +787,11 @@ function FishLib:FindBestLure(b, state, usedrinks, forcemax)
             self:UpdateLureInventory();
             -- if drinking will work, then we're done
             if ( usedrinks and #useinventory > 0 ) then
-                if ( not LastUsed or not self:HasBuff(LastUsed.n) ) then
+                if ( not self.LastUsed or not self:HasBuff(self.LastUsed.n) ) then
                     local id = useinventory[1].id;
                     if ( not self:HasBuff(useinventory[1].n) ) then
                         if ( level <= (skill + useinventory[1].b) ) then
+                            self.LastUsed = useinventory[1];
                             return nil, useinventory[1];
                         end
                     end
@@ -798,7 +801,7 @@ function FishLib:FindBestLure(b, state, usedrinks, forcemax)
             state = state or 0;
             local checklure;
             local useit;
-            local b = 0;
+            b = 0;
 
             -- Look for lures we're wearing, first
             for s=state+1,#lureinventory,1 do
@@ -833,7 +836,7 @@ function FishLib:FindBestHat()
     for _,hat in ipairs(FISHINGHATS) do
         local id = hat["id"]
         if GetItemCount(id) > 0 and self:IsWorn(id) then
-            local startTime, _, _ = GetItemCooldown(id);
+            local startTime, _, _ = C_Container.GetItemCooldown(id);
             if ( startTime == 0 ) then
                 return 1, hat;
             end
@@ -905,14 +908,15 @@ fishlibframe:SetScript("OnEvent", function(self, event, ...)
     elseif (event == "ACTIONBAR_SLOT_CHANGED") then
         self.fl:GetFishingActionBarID(true)
     elseif (event == "PLAYER_REGEN_DISABLED") then
-        self.fl:InCombat(true)
+        self.fl:SetCombat(true)
     elseif (event == "PLAYER_REGEN_ENABLED") then
-        self.fl:InCombat(false)
+        self.fl:SetCombat(false)
     end
 end);
 fishlibframe:Show();
 
 -- set up a table of slot mappings for looking up item information
+local FISHING_TOOL_SLOT = "FishingToolSlot"
 local INVSLOT_FISHING_TOOL = 28;
 
 local slotinfo = {
@@ -932,7 +936,7 @@ local slotinfo = {
     [14] = { name = "Finger1Slot", tooltip = FINGER1SLOT, id = INVSLOT_FINGER2, transmog = false },
     [15] = { name = "Trinket0Slot", tooltip = TRINKET0SLOT, id = INVSLOT_TRINKET1, transmog = false },
     [16] = { name = "Trinket1Slot", tooltip = TRINKET1SLOT, id = INVSLOT_TRINKET2, transmog = false },
-    [17] = { name = "FishingToolSlot", tooltip = FISHINGTOOLSLOT, id = INVSLOT_FISHING_TOOL, transmog = false },
+    [17] = { name = FISHING_TOOL_SLOT, tooltip = FISHINGTOOLSLOT, id = INVSLOT_FISHING_TOOL, transmog = false },
     [18] = { name = "SecondaryHandSlot", tooltip = SECONDARYHANDSLOT, id = INVSLOT_OFFHAND, transmog = true },
 }
 
@@ -1165,7 +1169,7 @@ end
 -- count tables that don't have monotonic integer indexes
 function FishLib:tablecount(tab)
     local n = 0;
-    for k,v in pairs(tab) do
+    for _,_ in pairs(tab) do
         n = n + 1;
     end
     return n;
@@ -1216,7 +1220,7 @@ function FishLib:printable(val)
         return val and "true" or "false";
     elseif (type(val) == "table") then
         local tab = nil;
-        for key,value in self:spairs(val) do
+        for _,value in self:spairs(val) do
             if tab then
                 tab = tab..", "
             else
@@ -1244,7 +1248,7 @@ function FishLib:GetItemPattern()
     if ( not _itempattern ) then
         -- This should work all the time
         self:GetPoleType(); -- force the default pole into the cache
-        local _, pat, _, _, _, _, _, _ = GetItemInfo(6256);
+        local pat = self:GetItemInfoFields(6256, self.ITEM_ICON);
         pat = string.gsub(pat, "|c(%x+)|Hitem:(%d+)(:%d+)", "|c(%%x+)|Hitem:(%%d+)(:%%d+)");
         pat = string.gsub(pat, ":[-]?%d+", ":[-]?%%d+");
         _itempattern = string.gsub(pat, "|h%[(.*)%]|h|r", "|h%%[(.*)%%]|h|r");
@@ -1257,7 +1261,7 @@ function FishLib:ValidLink(link, full)
         link = "item:"..link
     end
     if full then
-        _, link, _, _, _, _, _, _, _, _, _ = GetItemInfo(link);
+        link = self:GetItemInfoFields(link, self.ITEM_LINK);
     end
     return link
 end
@@ -1332,9 +1336,27 @@ function FishLib:GetItemInfoFields(link, ...)
     end
 end
 
+function FishLib:GetItemInfo(link)
+    if (link) then
+        link = self:ValidLink(link)
+        return self:GetItemInfoFields(link,
+            FishLib.ITEM_NAME ,
+            FishLib.ITEM_LINK,
+            FishLib.ITEM_QUALITY,
+            FishLib.ITEM_LEVEL,
+            FishLib.ITEM_MINLEVEL,
+            FishLib.ITEM_TYPE,
+            FishLib.ITEM_SUBTYPE,
+            FishLib.ITEM_STACK,
+            FishLib.ITEM_EQUIPLOC,
+            FishLib.ITEM_ICON
+        );
+    end
+end
+
 function FishLib:IsLinkableItem(link)
-    local name, link = self:GetItemInfoFields(link, self.ITEM_NAME, self.ITEM_LINK);
-    return ( n and l );
+    local name, _link = self:GetItemInfoFields(link, self.ITEM_NAME, self.ITEM_LINK);
+    return ( name and _link );
 end
 
 function FishLib:ChatLink(item, name, color)
@@ -1412,7 +1434,7 @@ function FishLib:IsHyperCompressedOcean(text)
 end
 
 function FishLib:AddSchoolName(name)
-    tinsert(self.SCHOOLS, { name = name, kind = SCHOOL_FISH });
+    tinsert(self.SCHOOLS, { name = name, kind = self.SCHOOL_FISH });
 end
 
 function FishLib:GetWornItem(get_id, slot)
@@ -1441,7 +1463,8 @@ function FishLib:IsFishingPole(itemLink)
         itemLink = self:GetMainHandItem();
     end
     if ( itemLink ) then
-        local itemLink,itemtype,subtype,itemTexture = self:GetItemInfoFields(itemLink, self.ITEM_LINK, self.ITEM_TYPE, self.ITEM_SUBTYPE, self.ITEM_ICON);
+        local itemtype,subtype,itemTexture;
+        itemLink,itemtype,subtype,itemTexture = self:GetItemInfoFields(itemLink, self.ITEM_LINK, self.ITEM_TYPE, self.ITEM_SUBTYPE, self.ITEM_ICON);
         local _, id, _ = self:SplitLink(itemLink, true);
 
         self:GetPoleType();
@@ -1451,8 +1474,8 @@ function FishLib:IsFishingPole(itemLink)
              itemTexture = string.lower(itemTexture);
              if ( string.find(itemTexture, "inv_fishingpole") or
                     string.find(itemTexture, "fishing_journeymanfisher") ) then
-                 -- Make sure it's not "Nat Pagle's Fish Terminator"
-                 if ( id ~= 19944  ) then
+                -- Make sure it's not "Nat Pagle's Fish Terminator"
+                if ( id ~= 19944  ) then
                      fp_itemtype = itemtype;
                      fp_subtype = subtype;
                      return true;
@@ -1587,7 +1610,6 @@ end
 
 -- look for double clicks
 function FishLib:CheckForDoubleClick(button)
-    self:ResetOverride()
     if FishLib.MapButton[button] ~= self.buttonevent then
         return false;
     end
@@ -1689,6 +1711,7 @@ local special_maps = {
 -- Dragon Isles, 12, 1978
 function FishLib:GetMapContinent(mapId, debug)
     if HBD.mapData[mapId] and mapId then
+        local lastMapId;
         local cMapId = mapId;
         local parent = HBD.mapData[cMapId].parent;
         while (parent ~= 946 and parent ~= 947 and HBD.mapData[parent]) do
@@ -1925,11 +1948,7 @@ end
 
 -- we should have some way to believe
 function FishLib:SetCaughtSoFar(value)
-    if ( FishingBuddy and FishingBuddy.GetSetting ) then
-        self.caughtSoFar = FishingBuddy.GetSetting("CaughtSoFar") or 0;
-    else
-        self.caughtSoFar = value or 0;
-    end
+    self.caughtSoFar = value or 0;
 end
 
 function FishLib:GetCaughtSoFar()
@@ -2034,7 +2053,7 @@ end
 function FishLib:FindChatWindow(name)
     local frame;
     for i = 1, NUM_CHAT_WINDOWS do
-        local frame = _G["ChatFrame" .. i];
+        frame = _G["ChatFrame" .. i];
         if (frame.name == name) then
             return frame, _G["ChatFrame" .. i .. "Tab"];
         end
@@ -2051,13 +2070,13 @@ function FishLib:GetChatWindow(name)
                 if ( not frame.oldAlpha ) then
                     frame.oldAlpha = frame:GetAlpha() or DEFAULT_CHATFRAME_ALPHA;
                 end
-                FCF_DockFrame(frame, (#FCFDock_GetChatFrames(GENERAL_CHAT_DOCK)+1), true);
-                FCF_FadeInChatFrame(FCFDock_GetSelectedWindow(GENERAL_CHAT_DOCK));
+                ShowUIPanel(frame)
                 FCF_DockUpdate();
             end
             return frame, frametab;
         else
-            local frame = FCF_OpenNewWindow(name);
+            frame = FCF_OpenNewWindow(name, true);
+			FCF_CopyChatSettings(frame, DEFAULT_CHAT_FRAME);
             return self:FindChatWindow(name);
         end
     end
@@ -2083,7 +2102,6 @@ local function ClickHandled(self)
     if ( self.postclick ) then
         self.postclick();
     end
-    self.fl:ResetOverride()
 end
 
 local function BuffUpdate(self, elapsed)
@@ -2106,23 +2124,12 @@ function FishLib:WillTaint()
     return (InCombatLockdown() or (UnitAffectingCombat("player") or UnitAffectingCombat("pet")))
 end
 
-function FishLib:InCombat(flag)
+function FishLib:SetCombat(flag)
     self.combat_flag = flag
-    if not flag then
-        self:ResetOverride()
-    end
 end
 
-function FishLib:ResetOverride(force)
-    if self.combat_flag or self:WillTaint() then
-        self.clear_bindings = true
-    elseif self.clear_bindings or force then
-        local btn = self:CleanSAButton(false);
-        if (  btn ) then
-            ClearOverrideBindings(btn)
-        end
-        self.clear_bindings = false
-    end
+function FishLib:InCombat()
+    return self.combat_flag or self:WillTaint()
 end
 
 function FishLib:CreateSAButton()
@@ -2264,6 +2271,7 @@ function FishLib:InvokeLuring(id, itemtype)
         return;
     end
     if ( id ) then
+        local targetslot;
         id = self:ValidLink(id)
         if itemtype == "toy" then
             btn:SetAttribute("type", "toy");
@@ -2383,11 +2391,12 @@ function FishLib:GetPoleBonus()
         local total = self:FishingBonusPoints(INVSLOT_MAINHAND, true);
         local hmhe,_,_,_,_,_ = GetWeaponEnchantInfo();
         if ( hmhe ) then
+            local id;
             -- IsFishingPole has set mainhand for us
             if IsRetail() then
-                local id = self:GetFishingToolItem(true);
+                id = self:GetFishingToolItem(true);
             else
-                local id = self:GetMainHandItem(true);
+                id = self:GetMainHandItem(true);
             end
             -- get the raw value of the pole without any temp enchants
             local pole = self:FishingBonusPoints(id);
@@ -2435,7 +2444,6 @@ function FishLib:GetBestFishingItem(slotid, ignore)
 
     -- this only gets items in bags, hence the check above for slots
     local itemtable = {};
-    local item = nil;
     itemtable = GetInventoryItemsForSlot(slotid, itemtable);
     for location,id in pairs(itemtable) do
         if (not ignore or not ignore[id]) then
@@ -2500,9 +2508,9 @@ end
 -- look for the item anywhere we can find it, skipping if we're looking
 -- for more than one
 function FishLib:FindThisItem(id, skipcount)
-    local skipcount = skipcount or 0;
+    skipcount = skipcount or 0;
     -- force id to be a number
-    local _, id, name, _ = self:SplitLink(id, true)
+    _, id, _, _ = self:SplitLink(id, true)
     if ( not id ) then
         return nil,nil;
     end
@@ -2762,7 +2770,7 @@ local function FixupStrings(target)
 end
 
 local function FixupBindings(target)
-    for tag,str in pairs(target) do
+    for tag,_ in pairs(target) do
         if ( string.find(tag, "^BINDING") ) then
             setglobal(tag, target[tag]);
             target[tag] = nil;
