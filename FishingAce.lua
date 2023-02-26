@@ -191,7 +191,7 @@ function FAOptions(uiType, uiName)
 
 	-- Debugging
 	-- options.db = db
-	
+
 	return options
 end
 
@@ -201,7 +201,6 @@ local LastLure
 local casting_timer = null
 function FishingAce:PostCastUpdate(self)
 	local stop = true
-	FL:ResetOverride();
 	if ( not InCombatLockdown() ) then
 		if ( AddingLure ) then
 			local sp, sub, txt, tex, st, et, trade, int = UnitChannelInfo("player");
@@ -246,10 +245,10 @@ function FishingAce:OnInitialize()
 	if AddonLoader and AddonLoader.RemoveInterfaceOptions then
 		AddonLoader:RemoveInterfaceOptions(ADDONNAME)
 	end
-	
+
 	LibStub("AceConfigRegistry-3.0"):RegisterOptionsTable(ADDONNAME, FAOptions)
 	LibStub("AceConfigDialog-3.0"):AddToBlizOptions(ADDONNAME, L["Fishing Ace!"])
-	
+
 	-- 	L["Slash-Commands"] = { "/fishingace", "/fa" }
 	local config = LibStub("AceConfigCmd-3.0")
 	config:CreateChatCommand("fishingace", ADDONNAME)
@@ -379,7 +378,7 @@ function FishingAce:OnEnable()
 	self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
 	self:RegisterEvent("LOOT_OPENED")
 	self:RegisterEvent("GLOBAL_MOUSE_DOWN")
-	
+
 	if ( FishingBuddy and FishingBuddy.Message ) then
          FishingBuddy.Message(L["FishingAce is active, easy cast disabled."]);
 	end
