@@ -2787,7 +2787,7 @@ end
 
 function FishLib:Translate(addon, source, target, forced)
     local locale = forced or GetLocale();
-    target.VERSION = GetAddOnMetadata(addon, "Version");
+    target.VERSION = select(4, GetAddOnInfo(addon));
     LoadTranslation(source, locale, target);
     if ( locale ~= "enUS" ) then
         LoadTranslation(source, "enUS", target, forced);
