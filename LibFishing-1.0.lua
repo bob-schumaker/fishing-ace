@@ -2795,15 +2795,26 @@ end
 
 function FishLib:Translate(addon, source, target, forced)
     local locale = forced or GetLocale();
-    target.VERSION = select(4, GetAddOnInfo(addon));
+    
+    -- Check if the addon name is correct
+    local ok, version = pcall(GetAddOnMetadata, addon, "Version")
+    if not ok then
+        print("Error: Invalid AddOn name", addon, " - Usage: local value = C_AddOns.GetAddOnMetadata(name, variable)")
+        return
+    end
+
+    target.VERSION = version
     LoadTranslation(source, locale, target);
+    
     if ( locale ~= "enUS" ) then
         LoadTranslation(source, "enUS", target, forced);
     end
+    
     LoadTranslation(source, "Inject", target);
     visited = {}
     FixupStrings(target);
     FixupBindings(target);
+    
     if (forced) then
         return missing;
     end
