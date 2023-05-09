@@ -10,7 +10,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 local _
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 101105
+local MINOR_VERSION = 101107
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -2243,7 +2243,6 @@ function FishLib:SetOverrideBindingClick()
     if ( btn ) then
         local buttonkey = self:GetSAMouseKey();
         SetOverrideBindingClick(btn, true, buttonkey, SABUTTONNAME);
-        self.clear_bindings = true
     end
 end
 
@@ -2639,13 +2638,14 @@ local function GetThresholdPercentage(quality, ...)
         return 0.5
     end
 
+    local last
     if worst <= best then
         if quality <= worst then
             return 0
         elseif quality >= best then
             return 1
         end
-        local last = worst
+        last = worst
         for i = 2, n-1 do
             local value = select(i, ...)
             if quality <= value then
@@ -2653,16 +2653,13 @@ local function GetThresholdPercentage(quality, ...)
             end
             last = value
         end
-
-        local value = select(n, ...)
-        return ((n-2) + (quality - last) / (value - last)) / (n-1)
     else
         if quality >= worst then
             return 0
         elseif quality <= best then
             return 1
         end
-        local last = worst
+        last = best
         for i = 2, n-1 do
             local value = select(i, ...)
             if quality >= value then
@@ -2671,9 +2668,9 @@ local function GetThresholdPercentage(quality, ...)
             last = value
         end
 
-        local value = select(n, ...)
-        return ((n-2) + (quality - last) / (value - last)) / (n-1)
     end
+    local value = select(n, ...)
+    return ((n-2) + (quality - last) / (value - last)) / (n-1)
 end
 
 function FishLib:GetThresholdColor(quality, ...)
@@ -2795,17 +2792,22 @@ end
 
 function FishLib:Translate(addon, source, target, forced)
     local locale = forced or GetLocale();
-    target.VERSION = GetAddOnMetadata(addon, "Version");
-    LoadTranslation(source, locale, target);
-    if ( locale ~= "enUS" ) then
-        LoadTranslation(source, "enUS", target, forced);
-    end
-    LoadTranslation(source, "Inject", target);
-    visited = {}
-    FixupStrings(target);
-    FixupBindings(target);
-    if (forced) then
-        return missing;
+	local addonCount = GetNumAddOns();
+	for addonIndex = 1, addonCount do
+		local name, title, notes, loadable, reason, security = GetAddOnInfo(addonIndex);
+        if name == addon then
+            target.VERSION = C_AddOns.GetAddOnMetadata(addonIndex, "Version");
+            LoadTranslation(source, locale, target);
+            if ( locale ~= "enUS" ) then
+                LoadTranslation(source, "enUS", target, forced);
+            end
+            LoadTranslation(source, "Inject", target);
+            FixupStrings(target);
+            FixupBindings(target);
+            if (forced) then
+                return missing;
+            end
+        end
     end
 end
 
