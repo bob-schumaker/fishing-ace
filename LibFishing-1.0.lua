@@ -1,4 +1,4 @@
-﻿--[[
+--[[
 Name: LibFishing-1.0
 Maintainers: Sutorix <sutorix@hotmail.com>
 Description: A library with fishing support routines used by Fishing Buddy, Fishing Ace and FB_Broker.
@@ -10,7 +10,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 local _
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 101108
+local MINOR_VERSION = 101109
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -2790,26 +2790,31 @@ local function LoadTranslation(source, lang, target, record)
     end
 end
 
-function FishLib:Translate(addon, source, target, forced)
-    local locale = forced or GetLocale();
-	local addonCount = GetNumAddOns();
-	for addonIndex = 1, addonCount do
-		local name, title, notes, loadable, reason, security = GetAddOnInfo(addonIndex);
+function FishLib:AddonVersion(addon)
+    local addonCount = GetNumAddOns();
+    for addonIndex = 1, addonCount do
+        local name, title, notes, loadable, reason, security = GetAddOnInfo(addonIndex);
         if name == addon then
-            target.VERSION = C_AddOns.GetAddOnMetadata(addonIndex, "Version");
-        end
-        LoadTranslation(source, locale, target);
-        if ( locale ~= "enUS" ) then
-            LoadTranslation(source, "enUS", target, forced);
-        end
-        LoadTranslation(source, "Inject", target);
-        FixupStrings(target);
-        FixupBindings(target);
-        if (forced) then
-            return missing;
+            return C_AddOns.GetAddOnMetadata(addonIndex, "Version");
         end
     end
 end
+
+function FishLib:Translate(addon, source, target, forced)
+    local locale = forced or GetLocale();
+    target.VERSION = self:AddonVersion(addon)
+    LoadTranslation(source, locale, target);
+    if ( locale ~= "enUS" ) then
+        LoadTranslation(source, "enUS", target, forced);
+    end
+    LoadTranslation(source, "Inject", target);
+    FixupStrings(target);
+    FixupBindings(target);
+    if (forced) then
+        return missing;
+    end
+end
+
 
 -- Pool types
 FishLib.SCHOOL_FISH = 0;
