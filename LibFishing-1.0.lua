@@ -1,4 +1,4 @@
---[[
+﻿--[[
 Name: LibFishing-1.0
 Maintainers: Sutorix <sutorix@hotmail.com>
 Description: A library with fishing support routines used by Fishing Buddy, Fishing Ace and FB_Broker.
@@ -2098,9 +2098,9 @@ function FishLib:GetFrameInfo(framespec)
     return framespec, n;
 end
 
-local function ClickHandled(self)
+local function ClickHandled(self, mouse_button, down)
     if ( self.postclick ) then
-        self.postclick();
+        self.postclick(mouse_button, down);
     end
 end
 
