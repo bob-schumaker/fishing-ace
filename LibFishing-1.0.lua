@@ -10,7 +10,7 @@ Licensed under a Creative Commons "Attribution Non-Commercial Share Alike" Licen
 local _
 
 local MAJOR_VERSION = "LibFishing-1.0"
-local MINOR_VERSION = 101109
+local MINOR_VERSION = 101110
 
 if not LibStub then error(MAJOR_VERSION .. " requires LibStub") end
 
@@ -56,6 +56,29 @@ local function IsWrath()
     return not IsRetail() and WOW.interface >= 30400 and WOW.interface < 40000
 end
 
+function FishLib:CurrentVersionName()
+    if self.IsRetail() then
+        return "Retail"
+    end
+
+    if self.IsClassic() then
+        return "Classic"
+    end
+
+    if self.IsVanilla() then
+        return "Classic Era"
+    end
+
+    if self.IsCrusade() then
+        return "Crusade"
+    end
+
+    if self.IsWrath() then
+        return "Wrath"
+    end
+
+    return "Unknown ".._G.WOW_PROJECT_ID
+end
 
 function FishLib:WOWVersion()
     return WOW.major, WOW.minor, WOW.dot, IsClassic();
@@ -160,13 +183,18 @@ end
 -- support finding the fishing skill in classic
 local function FindSpellID(thisone)
     local id = 1;
-    local spellTexture = GetSpellTexture(id);
+    if IsVanilla() then
+        getSpellTexture = C_Spell.GetSpellTexture;
+    else
+        getSpellTexture = GetSpellTexture;
+    end
+    local spellTexture = getSpellTexture(id);
     while (spellTexture) do
         if (spellTexture and spellTexture == thisone) then
             return id;
         end
         id = id + 1;
-        spellTexture = GetSpellTexture(id);
+        spellTexture = getSpellTexture(id);
     end
     return nil;
 end
@@ -175,7 +203,7 @@ function FishLib:GetFishingSpellInfo()
     if self:IsClassic() then
         local spell = FindSpellID("Interface\\Icons\\Trade_Fishing");
         if spell then
-            local name, _, _ = GetSpellInfo(spell);
+            local name, _, _ = C_Spell.GetSpellInfo(spell);
             return spell, name;
         end
         return 9, PROFESSIONS_FISHING;
@@ -187,11 +215,11 @@ function FishLib:GetFishingSpellInfo()
     end
     local name, _, _, _, count, offset, _ = GetProfessionInfo(fishing);
     local id = nil;
+    local spellbank = Enum.SpellBookSpellBank.Player;
     for i = 1, count do
-        local _, spellId = GetSpellLink(offset + i, "spell");
-        local spellName = GetSpellInfo(spellId);
+        local spellName, _ = C_SpellBook.GetSpellBookItemName(offset + i, spellbank);
         if (spellName == name) then
-            id = spellId;
+            _, _, id = C_SpellBook.GetSpellBookItemType(offset + i, spellbank);
             break;
         end
     end
@@ -326,8 +354,8 @@ function FishLib:GetTradeSkillData()
     end
     local btn = _G[SABUTTONNAME];
     if btn then
-        if (not IsAddOnLoaded(BlizzardTradeSkillUI)) then
-            LoadAddOn(BlizzardTradeSkillUI);
+        if (not C_AddOns.IsAddOnLoaded(BlizzardTradeSkillUI)) then
+            C_AddOns.LoadAddOn(BlizzardTradeSkillUI);
         end
         btn.skillupdate:SetScript("OnUpdate", SkillInitialize);
         btn.skillupdate:Show()
@@ -662,9 +690,9 @@ local spellidx = nil;
 function FishLib:GetBuff(buffId)
     if ( buffId ) then
         for idx=1,40 do
-            local current_buff = UnitBuff("player", idx);
+            local current_buff = C_UnitAuras.GetAuraDataByIndex("player", idx);
             if current_buff then
-                local info = {UnitBuff("player", idx)}
+                local info = {C_UnitAuras.GetAuraDataByIndex("player", idx)};
                 local spellid = select(10, unpack(info));
                 if (buffId == spellid) then
                     return idx, info
@@ -1523,8 +1551,8 @@ end
 function FishLib:GetTrackingID(tex)
     if ( tex ) then
         for id=1,C_Minimap.GetNumTrackingTypes() do
-            local _, texture, _, _ = C_Minimap.GetTrackingInfo(id);
-            texture = texture.."";
+            local info = C_Minimap.GetTrackingInfo(id);
+            texture = info.texture.."";
             if ( texture == tex) then
                 return id;
             end
@@ -2791,9 +2819,9 @@ local function LoadTranslation(source, lang, target, record)
 end
 
 function FishLib:AddonVersion(addon)
-    local addonCount = GetNumAddOns();
+    local addonCount = C_AddOns.GetNumAddOns();
     for addonIndex = 1, addonCount do
-        local name, title, notes, loadable, reason, security = GetAddOnInfo(addonIndex);
+        local name, title, notes, loadable, reason, security = C_AddOns.GetAddOnInfo(addonIndex);
         if name == addon then
             return C_AddOns.GetAddOnMetadata(addonIndex, "Version");
         end
